@@ -1,0 +1,27 @@
+name: Build app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'scripts/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build -c release
+      - name: Package
+        run: ./scripts/build.sh
+      - name: Archive
+        run: ditto -c -k --keepParent build/MacInotch.app MacInotch.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MacInotch
+          path: MacInotch.zip

@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/notchctl --source claude --kind attention --key cc-input --title 'Claude needs you' --body \"$(basename \"$PWD\")\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/notchctl --dismiss cc-input; $HOME/.local/bin/notchctl --source claude --kind success --title 'Claude finished' --body \"$(basename \"$PWD\")\" --timeout 5"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/notchctl --source claude --kind info --title 'Claude Code started' --body \"$(basename \"$PWD\")\" --timeout 3"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply overflow-x-hidden bg-ink text-chalk antialiased;
+    font-feature-settings: 'ss01', 'cv01';
+  }
+  ::selection {
+    background: rgba(255, 138, 52, 0.28);
+  }
+}
+
+@layer components {
+  .rule {
+    @apply border-t border-line;
+  }
+  .kicker {
+    @apply font-mono text-[11px] uppercase tracking-[0.22em] text-faint;
+  }
+  .shell {
+    @apply mx-auto w-full max-w-[1180px] px-6 md:px-10;
+  }
+  .hairgrid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 96px 100%;
+  }
+}
+
+.noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
