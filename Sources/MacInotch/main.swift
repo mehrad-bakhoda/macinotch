@@ -26,7 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private let sampleGate = Flag(false)
     private var statusItem: NSStatusItem?
-    nonisolated(unsafe) static var statusItemX: Double = -1
 
     func applicationDidFinishLaunching(_ note: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -295,7 +294,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             "clipCount": ClipboardService.shared.entries.count,
             "menuBar": ["installed": MenuBarHider.shared.installed,
                         "hidden": MenuBarHider.shared.hidden,
-                        "ownItemX": AppDelegate.statusItemX,
                         "diag": MenuBarHider.shared.diagnostics],
             "weather": ["available": WeatherService.shared.snapshot.available,
                         "status": WeatherService.shared.status,
@@ -374,12 +372,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.menu = menu
         statusItem = item
 
-        let tracker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            Task { @MainActor in
-                Self.statusItemX = Double(item.button?.window?.frame.origin.x ?? -1)
-            }
-        }
-        RunLoop.main.add(tracker, forMode: .common)
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

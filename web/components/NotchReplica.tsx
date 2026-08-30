@@ -41,7 +41,7 @@ export default function NotchReplica() {
           onMouseLeave={() => setOpen(false)}
           onClick={() => setOpen((v) => !v)}
           className="relative flex cursor-pointer justify-center"
-          style={{ height: 300 }}
+          style={{ height: 232 }}
         >
           <motion.div
             animate={{ width: open ? OPEN_W : COLLAPSED_W, borderRadius: open ? 22 : 14 }}
@@ -134,7 +134,7 @@ export default function NotchReplica() {
           <div className="pointer-events-none absolute left-1/2 top-0 z-20 h-[32px] w-[118px] -translate-x-1/2 rounded-b-[13px] bg-black" />
         </div>
 
-        <p className="mt-auto pb-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/25">
+        <p className="pt-2 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-white/30">
           {open ? 'expanded' : 'hover the notch'}
         </p>
       </div>

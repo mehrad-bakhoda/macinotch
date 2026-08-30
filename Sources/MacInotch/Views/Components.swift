@@ -7,17 +7,25 @@ struct PanelSurface<S: Shape>: View {
 
     var body: some View {
         if glass {
+            #if compiler(>=6.2)
             if #available(macOS 26.0, *) {
                 Color.clear.glassEffect(.regular.tint(theme.panelTint), in: shape)
             } else {
-                shape
-                    .fill(theme.isDark ? AnyShapeStyle(.ultraThinMaterial)
-                                       : AnyShapeStyle(.regularMaterial))
-                    .overlay(shape.fill(theme.panelTint))
+                material
             }
+            #else
+            material
+            #endif
         } else {
             shape.fill(theme.isDark ? Color(white: 0.05) : Color(white: 0.97))
         }
+    }
+
+    private var material: some View {
+        shape
+            .fill(theme.isDark ? AnyShapeStyle(.ultraThinMaterial)
+                               : AnyShapeStyle(.regularMaterial))
+            .overlay(shape.fill(theme.panelTint))
     }
 }
 
