@@ -16,8 +16,8 @@ const ROWS = [
   { kind: 'codex' as const, name: 'Codex', detail: '31.5K tokens, 12 messages' },
 ];
 
-const COLLAPSED_W = 548;
-const OPEN_W = 578;
+const COLLAPSED_W = 412;
+const OPEN_W = 524;
 
 export default function NotchReplica() {
   const [open, setOpen] = useState(false);
@@ -41,7 +41,7 @@ export default function NotchReplica() {
           onMouseLeave={() => setOpen(false)}
           onClick={() => setOpen((v) => !v)}
           className="relative flex cursor-pointer justify-center"
-          style={{ height: 190 }}
+          style={{ height: 330 }}
         >
           <motion.div
             animate={{ width: open ? OPEN_W : COLLAPSED_W, borderRadius: open ? 22 : 14 }}
@@ -54,7 +54,7 @@ export default function NotchReplica() {
                        shadow-[0_26px_70px_-14px_rgba(0,0,0,0.95)] ring-1 ring-white/[0.08]"
             style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
           >
-            <div className="flex h-[32px] items-center justify-between px-3.5">
+            <div className="flex h-[34px] items-center justify-between px-3.5">
               <div className="flex items-center gap-3">
                 {LEFT_METRICS.map((m) => (
                   <span key={m.value} className="flex items-center gap-1.5">
@@ -68,7 +68,7 @@ export default function NotchReplica() {
                   </span>
                 ))}
               </div>
-              <div className="w-[124px] shrink-0" />
+              <div className="w-[128px] shrink-0" />
               <div className="flex items-center gap-2.5">
                 <span className="flex items-center gap-1.5">
                   <span
@@ -140,10 +140,10 @@ export default function NotchReplica() {
             </AnimatePresence>
           </motion.div>
 
-          <div className="pointer-events-none absolute left-1/2 top-0 z-20 h-[32px] w-[118px] -translate-x-1/2 rounded-b-[13px] bg-black" />
+          <div className="pointer-events-none absolute left-1/2 top-0 z-20 h-[34px] w-[120px] -translate-x-1/2 rounded-b-[14px] bg-black" />
         </div>
 
-        <p className="text-center font-mono text-[9.5px] uppercase tracking-[0.18em] text-white/25">
+        <p className="pb-6 text-center font-mono text-[9.5px] uppercase tracking-[0.18em] text-white/25">
           {open ? 'expanded' : 'hover the notch'}
         </p>
       </div>
