@@ -69,7 +69,7 @@ export default function Home() {
       <div id="top" className="relative overflow-hidden">
         <Backdrop />
         <div className="shell relative pb-14 pt-16 sm:pt-20 md:pt-28">
-          <div className="grid items-center gap-10 md:gap-16 lg:grid-cols-[1fr_560px]">
+          <div className="grid items-center gap-10 md:gap-16 lg:grid-cols-[1fr_620px]">
             <div>
               <div className="kicker">macOS utility, MIT licensed</div>
               <h1 className="mt-4 font-display text-[clamp(36px,9vw,76px)] font-semibold leading-[0.98] tracking-tightest">

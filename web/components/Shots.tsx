@@ -6,11 +6,28 @@ import { useState } from 'react';
 type Shot = { file: string; label: string; blurb: string };
 
 const SHOTS: Shot[] = [
-  { file: 'home', label: 'Home', blurb: 'Clock, three calendars, vitals and media in one panel.' },
-  { file: 'sessions', label: 'Sessions', blurb: 'Claude Code and Codex sessions per project, with token spend.' },
-  { file: 'dock-files', label: 'Dock', blurb: 'A file shelf with named piles. Drag in, drag straight back out.' },
-  { file: 'clipboard', label: 'Clipboard', blurb: 'Text, images and file copies, pinnable and persistent.' },
-  { file: 'notes', label: 'Notes', blurb: 'Sticky notes backed by plain markdown files on disk.' },
+  {
+    file: 'home',
+    label: 'Home',
+    blurb:
+      'Clock and three calendars, weather, a timer, now playing, vitals with '
+      + 'sparklines and the process behind each spike, plus Claude Code and '
+      + 'Codex usage.',
+  },
+  {
+    file: 'sessions',
+    label: 'Sessions',
+    blurb:
+      'Recent Claude Code and Codex sessions per project, with message counts, '
+      + 'token spend and a live dot for whatever is running now.',
+  },
+  {
+    file: 'dock-files',
+    label: 'Dock',
+    blurb:
+      'A file shelf with named piles, AirDrop and zip in one click, and new '
+      + 'screenshots caught automatically.',
+  },
 ];
 
 export default function Shots({ base }: { base: string }) {
