@@ -9,6 +9,9 @@ const nextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isCI ? `/${repo}` : '',
+  },
 };
 
 export default nextConfig;

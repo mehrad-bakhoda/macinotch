@@ -5,51 +5,38 @@ const TINT: Record<Kind, string> = {
   codex: '#19c39c',
 };
 
-export function SourceMark({ kind, size = 20 }: { kind: Kind; size?: number }) {
-  const tint = TINT[kind];
+const LABEL: Record<Kind, string> = {
+  claude: 'Claude',
+  codex: 'ChatGPT and Codex',
+};
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+export function SourceMark({
+  kind,
+  size = 20,
+  muted = false,
+}: {
+  kind: Kind;
+  size?: number;
+  muted?: boolean;
+}) {
   return (
-    <span
-      className="grid shrink-0 place-items-center rounded-[30%]"
+    <img
+      src={`${BASE}/marks/${kind}.png`}
+      alt={LABEL[kind]}
+      width={size}
+      height={size}
+      loading="lazy"
+      draggable={false}
+      className="shrink-0 select-none"
       style={{
         width: size,
         height: size,
-        background: `${tint}2e`,
-        boxShadow: `inset 0 0 0 1px ${tint}59`,
+        filter: muted ? 'grayscale(1)' : undefined,
+        opacity: muted ? 0.45 : 1,
       }}
-    >
-      <svg
-        width={size * 0.58}
-        height={size * 0.58}
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden
-      >
-        {kind === 'claude' ? (
-          <path
-            d="M12 2.4v19.2M4.2 6.9l15.6 10.2M19.8 6.9L4.2 17.1"
-            stroke={tint}
-            strokeWidth="2.6"
-            strokeLinecap="round"
-          />
-        ) : (
-          <>
-            <path
-              d="M5.6 8.6 2.9 12l2.7 3.4M18.4 8.6 21.1 12l-2.7 3.4"
-              stroke={tint}
-              strokeWidth="2.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M13.9 5.4 10.1 18.6"
-              stroke={tint}
-              strokeWidth="2.3"
-              strokeLinecap="round"
-            />
-          </>
-        )}
-      </svg>
-    </span>
+    />
   );
 }
 
