@@ -44,6 +44,7 @@ export default function NotchReplica() {
           style={{ height: 330 }}
         >
           <motion.div
+            initial={{ width: COLLAPSED_W, borderRadius: 14 }}
             animate={{ width: open ? OPEN_W : COLLAPSED_W, borderRadius: open ? 22 : 14 }}
             transition={
               open

@@ -24,7 +24,7 @@ export default function Terminal() {
   return (
     <div
       ref={ref}
-      className="overflow-hidden rounded-xl border border-line bg-panel font-mono text-[11px] leading-relaxed sm:text-[12.5px]"
+      className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel font-mono text-[11px] leading-relaxed sm:text-[12.5px]"
     >
       <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />

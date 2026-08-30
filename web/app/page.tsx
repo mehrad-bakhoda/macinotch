@@ -31,7 +31,7 @@ function Section({
   return (
     <section className="rule py-14 md:py-20">
       <div className="shell">
-        <div className="grid gap-6 md:grid-cols-[190px_1fr] md:gap-10">
+        <div className="grid min-w-0 gap-6 md:grid-cols-[190px_1fr] md:gap-10">
           <div>
             <div className="kicker">{index}</div>
             <h2 className="mt-2.5 font-display text-[22px] font-semibold tracking-tightest sm:text-[26px]">
@@ -39,7 +39,7 @@ function Section({
             </h2>
             {lede && <p className="mt-2 max-w-[420px] text-[14px] text-muted md:max-w-[240px]">{lede}</p>}
           </div>
-          <div>{children}</div>
+          <div className="min-w-0">{children}</div>
         </div>
       </div>
     </section>
@@ -116,7 +116,7 @@ export default function Home() {
         title="Two minutes."
         lede="Download a build, or compile it yourself with the Command Line Tools."
         >
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <pre className="overflow-x-auto rounded-xl border border-line bg-panel p-4 font-mono text-[11px] leading-relaxed sm:text-[12.5px]">
             <span className="text-faint"># after downloading the release</span>
             {'\n'}xattr -dr com.apple.quarantine /Applications/MacInotch.app
@@ -145,7 +145,7 @@ export default function Home() {
         title="Track Claude and Codex."
         lede="Both assistants, read straight off your own machine."
       >
-        <div id="ai" className="space-y-5">
+        <div id="ai" className="min-w-0 space-y-5">
           <p className="text-[15px] leading-relaxed text-muted">
             MacInotch reads the transcripts Claude Code and Codex already write
             locally, so it can show what you have spent without an API key,
@@ -188,7 +188,7 @@ export default function Home() {
       </Section>
 
       <Section index="05 / Scripting" title="Drive it from anything." lede="A CLI, a loopback endpoint and a URL scheme.">
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Terminal />
           <p className="text-[14px] text-muted">
             The HTTP endpoint is bound to 127.0.0.1 only. There is also a

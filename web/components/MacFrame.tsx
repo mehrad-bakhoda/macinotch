@@ -4,9 +4,9 @@ export default function MacFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full overflow-hidden">
       <div className="mx-auto flex h-[186px] justify-center md:h-[292px] lg:h-[400px]">
-        <div className="origin-top scale-[0.86] md:scale-[0.72] lg:scale-100">
+        <div className="origin-top scale-[0.71] md:scale-[0.72] lg:scale-100">
           <div
-            className="relative rounded-t-[10px] p-0 md:rounded-t-[26px] md:p-[11px]"
+            className="relative rounded-t-[14px] p-[5px] md:rounded-t-[26px] md:p-[11px]"
             style={{
               maskImage:
                 'linear-gradient(to bottom, #000 0%, #000 56%, rgba(0,0,0,0.35) 84%, transparent 100%)',
@@ -15,7 +15,7 @@ export default function MacFrame({ children }: { children: React.ReactNode }) {
             }}
           >
             <div
-              className="pointer-events-none absolute inset-0 hidden rounded-t-[26px] md:block"
+              className="pointer-events-none absolute inset-0 rounded-t-[14px] md:rounded-t-[26px]"
               style={{
                 background:
                   'linear-gradient(180deg,#5b5b64 0%,#3a3a43 5%,#26262d 26%,#1c1c22 100%)',
@@ -24,11 +24,11 @@ export default function MacFrame({ children }: { children: React.ReactNode }) {
             />
 
             <div
-              className="relative w-[440px] overflow-hidden rounded-t-[9px] md:w-[980px] md:rounded-t-[16px]"
+              className="relative w-[520px] overflow-hidden rounded-t-[12px] md:w-[980px] md:rounded-t-[16px]"
               style={{ height: 400 }}
             >
               <div
-                className="absolute inset-0 hidden md:block"
+                className="absolute inset-0"
                 style={{
                   background:
                     'radial-gradient(140% 130% at 28% -25%, #33404f 0%, #1a2029 42%, #090b10 100%)',

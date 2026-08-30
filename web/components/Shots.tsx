@@ -43,7 +43,7 @@ export default function Shots({ base }: { base: string }) {
   const shot = SHOTS[active];
 
   return (
-    <div className="grid gap-5 md:grid-cols-[190px_1fr] md:gap-8">
+    <div className="grid min-w-0 gap-5 md:grid-cols-[190px_1fr] md:gap-8">
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
         {SHOTS.map((s, i) => (
           <button
@@ -68,7 +68,7 @@ export default function Shots({ base }: { base: string }) {
         ))}
       </div>
 
-      <div>
+      <div className="min-w-0">
         <motion.div
           key={shot.file}
           initial={{ opacity: 0, y: 10 }}
