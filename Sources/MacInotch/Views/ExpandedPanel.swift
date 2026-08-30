@@ -856,7 +856,7 @@ struct ExpandedPanel: View {
         if showsFans, let fan = hottestFan {
             out.append(AnyView(VitalColumn(
                 label: state.showFanControls ? "Fans ▾" : "Fans",
-                value: fan.isStopped ? "—" : String(format: "%.1f", fan.rpm / 1000),
+                value: fan.isStopped ? "-" : String(format: "%.1f", fan.rpm / 1000),
                 unit: fan.isStopped ? "" : "k",
                 detail: fanDetail, fraction: fan.fraction,
                 tint: t.load(fan.fraction), theme: t)))
@@ -1137,7 +1137,7 @@ struct ExpandedPanel: View {
                             .background(Capsule().fill(tint.opacity(0.15)))
                     }
 
-                    Text(music.artist + (music.album.isEmpty ? "" : " — " + music.album))
+                    Text(music.artist + (music.album.isEmpty ? "" : " · " + music.album))
                         .font(.system(size: 11))
                         .foregroundStyle(t.secondary)
                         .lineLimit(1)

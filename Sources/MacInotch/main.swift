@@ -396,7 +396,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             header.isEnabled = false
             menu.addItem(header)
             for entry in recent {
-                let title = entry.body.isEmpty ? entry.title : "\(entry.title) — \(entry.body)"
+                let title = entry.body.isEmpty ? entry.title : "\(entry.title) · \(entry.body)"
                 let row = NSMenuItem(title: String(title.prefix(60)), action: nil,
                                      keyEquivalent: "")
                 row.image = AppIcons.icon(for: entry.sourceValue).map { icon in
@@ -411,7 +411,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         if let remaining = state.muteRemaining {
-            menu.addItem(withTitle: "Muted for \(remaining) — unmute",
+            menu.addItem(withTitle: "Muted for \(remaining), unmute",
                          action: #selector(unmute), keyEquivalent: "").target = self
         } else {
             let mute = NSMenu()
@@ -525,8 +525,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let rpm = fans.map { Int($0.rpm) }.max() ?? 0
         let hold = FanControlClient.shared.holds.values.max() ?? 0
         let title = hold > 0
-            ? "Fans — \(rpm) rpm · \(hold / 60)m \(hold % 60)s left"
-            : (rpm == 0 ? "Fans — stopped" : "Fans — \(rpm) rpm")
+            ? "Fans · \(rpm) rpm · \(hold / 60)m \(hold % 60)s left"
+            : (rpm == 0 ? "Fans · stopped" : "Fans · \(rpm) rpm")
 
         let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         parent.image = NSImage(systemSymbolName: "fan", accessibilityDescription: nil)

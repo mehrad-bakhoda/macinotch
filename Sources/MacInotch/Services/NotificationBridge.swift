@@ -165,7 +165,7 @@ final class NotificationBridge {
 
         let body = [subtitle, bodyText]
             .filter { !$0.isEmpty }
-            .joined(separator: " — ")
+            .joined(separator: " · ")
         return (title, body)
     }
 }

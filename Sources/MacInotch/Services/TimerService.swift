@@ -141,7 +141,7 @@ final class TimerService: ObservableObject {
             completedFocusRounds += 1
             payload.kind = "attention"
             payload.title = "Focus done"
-            payload.body = "Round \(completedFocusRounds) complete — take a break"
+            payload.body = "Round \(completedFocusRounds) complete, take a break"
         case .shortBreak, .longBreak:
             payload.kind = "success"
             payload.title = "Break over"

@@ -123,7 +123,7 @@ struct SettingsView: View {
                     NotchState.shared.previewAnimation()
                 }
                 HStack {
-                    Text("Opening springs open, closing snaps shut — they are tuned "
+                    Text("Opening springs open, closing snaps shut, they are tuned "
                          + "separately so an overshoot on the way out does not become "
                          + "a wobble on the way back.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -197,7 +197,7 @@ struct SettingsView: View {
                     Slider(value: $prefs.d.pollSeconds, in: 0.5...10, step: 0.5)
                         .frame(width: 170)
                 }
-                Text("\(prefs.d.pollSeconds, specifier: "%.1f") seconds — restart to apply")
+                Text("\(prefs.d.pollSeconds, specifier: "%.1f") seconds, restart to apply")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Sessions") {
@@ -220,7 +220,7 @@ struct SettingsView: View {
                     Slider(value: $prefs.d.usageWindowHours, in: 1...24, step: 1)
                         .frame(width: 170)
                 }
-                Text("\(Int(prefs.d.usageWindowHours)) hours — counted from your local "
+                Text("\(Int(prefs.d.usageWindowHours)) hours, counted from your local "
                      + "Claude Code and Codex transcripts, not from the provider. "
                      + "Restart to apply a new window length.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -249,7 +249,7 @@ struct SettingsView: View {
                 }
                 .disabled(!prefs.d.showRepo)
                 Text(state.repo.available
-                     ? "\(state.repo.name): \(state.repo.branch) — \(state.repo.summary)"
+                     ? "\(state.repo.name): \(state.repo.branch) · \(state.repo.summary)"
                      : "Branch, uncommitted changes, and ahead/behind counts.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -416,7 +416,7 @@ struct SettingsView: View {
                     Button("Empty shelf") { shelf.clear() }
                         .disabled(shelf.items.isEmpty)
                 }
-                Text("Files are referenced, never copied — removing one from the shelf "
+                Text("Files are referenced, never copied, removing one from the shelf "
                      + "leaves the original alone, and entries whose file has moved are "
                      + "dropped automatically.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -439,7 +439,7 @@ struct SettingsView: View {
             Section("Displays") {
                 Toggle("Follow the display the pointer is on",
                        isOn: $prefs.d.followActiveDisplay)
-                Text("Only moves while the notch is collapsed — an open panel "
+                Text("Only moves while the notch is collapsed, an open panel "
                      + "stays where you are reading it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -489,11 +489,11 @@ struct SettingsView: View {
                             .font(.callout)
                         }
                     }
-                    Text("Commandable range \(Int(state.fans.fans[0].minRPM))–"
+                    Text("Commandable range \(Int(state.fans.fans[0].minRPM)) to "
                          + "\(Int(state.fans.fans[0].maxRPM)) rpm. The firmware stops the "
                          + "fans entirely when the Mac is cool, but 2317 rpm is the "
                          + "slowest speed the SMC will accept, so there is no "
-                         + "\u{201C}off\u{201D} to set — only automatic, which may mean "
+                         + "\u{201C}off\u{201D} to set, only automatic, which may mean "
                          + "stopped.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -576,7 +576,7 @@ struct SettingsView: View {
     private var helperStatusText: String {
         if fanControl.reachable { return "Helper running" }
         if fanControl.installed { return "Helper installed but not responding" }
-        return "Helper not installed — fan control unavailable"
+        return "Helper not installed, fan control unavailable"
     }
 
     private var helperStatusIcon: String {
@@ -601,7 +601,7 @@ struct SettingsView: View {
                             .controlSize(.small)
                     }
                 }
-                Text("The chimes are synthesised mallet tones — short, soft attack, no clipping.")
+                Text("The chimes are synthesised mallet tones, short soft attack, no clipping.")
                     .font(.caption).foregroundStyle(.secondary)
 
                 ForEach(ruleSources, id: \.rawValue) { src in
@@ -730,7 +730,7 @@ struct SettingsView: View {
                         .font(.system(size: 26))
                         .foregroundStyle(.tertiary)
                     Text(history.entries.isEmpty
-                         ? "Nothing here yet — notifications are archived as they arrive."
+                         ? "Nothing here yet, notifications are archived as they arrive."
                          : "No matches.")
                         .font(.callout)
                         .foregroundStyle(.secondary)

@@ -1,7 +1,7 @@
 import Foundation
 
 let usage = """
-notchctl — push a notification into the MacInotch notch
+notchctl, push a notification into the MacInotch notch
 
 USAGE
   notchctl [TITLE] [BODY] [options]
@@ -11,7 +11,7 @@ OPTIONS
   -t, --title    Title text
   -b, --body     Body text
   -k, --kind     info | success | warning | error | progress | attention | music
-  -p, --progress 0.0 – 1.0   (implies --kind progress)
+  -p, --progress 0.0 to 1.0   (implies --kind progress)
       --key      Stable id; sending the same key updates that item in place
       --timeout  Seconds before it disappears (0 = never)
       --dismiss  Remove the item with this key
@@ -146,7 +146,7 @@ if fanMode {
        let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
         let helper = obj["helper"] as? String ?? "unknown"
         if helper != "running" {
-            print("fan helper: \(helper) — install it from Settings > Fans")
+            print("fan helper: \(helper), install it from Settings > Fans")
         }
         for fan in (obj["fans"] as? [[String: Any]] ?? []) {
             let index = (fan["index"] as? Int ?? 0) + 1

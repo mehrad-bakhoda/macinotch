@@ -11,7 +11,7 @@ struct Temperatures: Equatable {
     var socLoad: Double { max(0, min(1, (soc - 30) / 65)) }
 
     static func format(_ celsius: Double, fahrenheit: Bool) -> String {
-        guard celsius > 0 else { return "—" }
+        guard celsius > 0 else { return "-" }
         let v = fahrenheit ? celsius * 9 / 5 + 32 : celsius
         return "\(Int(v.rounded()))°"
     }
