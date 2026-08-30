@@ -122,8 +122,8 @@ export default function Home() {
           <pre className="overflow-x-auto rounded-xl border border-line bg-panel p-4 font-mono text-[11px] leading-relaxed sm:text-[12.5px]">
             <span className="text-faint"># or build it from source</span>
             {'\n'}git clone {REPO}.git
-            {'\n'}cd macinotch && ./scripts/build.sh
-            {'\n'}open build/MacInotch.app
+            {'\n'}cd macinotch
+            {'\n'}swift build -c release
           </pre>
           <p className="text-[14px] text-muted">
             It runs as a menu bar accessory with no Dock icon. A first run guide

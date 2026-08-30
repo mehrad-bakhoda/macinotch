@@ -75,12 +75,14 @@ Requires macOS 14 or later and the Xcode Command Line Tools.
 ```bash
 git clone https://github.com/mehrad-bakhoda/macinotch.git
 cd macinotch
-./scripts/build.sh
-open build/MacInotch.app
+swift build -c release
 ```
 
-`build.sh` compiles in release mode, assembles the app bundle, signs it ad-hoc,
-and symlinks the `notchctl` CLI into `~/.local/bin`.
+That produces three binaries in `.build/release`: `MacInotch`, the `notchctl`
+CLI, and the `notchfand` fan helper. Put `notchctl` somewhere on your `PATH`.
+
+A packaged `MacInotch.app` is produced by CI on every push and attached to each
+release, so the quickest way to get the bundle is to download it.
 
 MacInotch runs as a menu-bar accessory with no Dock icon. Its menu-bar icon
 opens Settings, sends a test notification, mutes, and pins the panel.
@@ -267,7 +269,6 @@ Sources/
   SMCKit/       shared SMC client, used by the app and the root helper
   notchctl/     command line interface
   notchfand/    privileged fan helper
-scripts/        build, icon generation, sound synthesis
 integrations/   Claude Code hooks
 docs/           project website
 ```
@@ -306,9 +307,9 @@ oversized `NSStatusItem`, so a wide item pushes everything to its left off
 screen. Listing other apps' status items is a different matter, the menu bar
 is a single composited surface, so that would need Screen Recording.
 
-**Sounds and the app icon are generated, not drawn.** `scripts/make_sounds.py`
-synthesises the notification tones and `scripts/make_icon.swift` renders the
-icon; both are re-runnable.
+**Sounds and the app icon are generated rather than drawn.** The notification
+tones are synthesised mallet hits, and the icon is rendered from a superellipse
+with the notch silhouette bitten out of it. Both ship in `Resources`.
 
 ---
 
@@ -323,9 +324,9 @@ npm install
 npm run dev
 ```
 
-Screenshots on the site come from `scripts/capture-shots.sh`. Run it with a
-clear screen, since the panel is translucent and whatever sits behind it shows
-through. Review every file it writes before committing.
+Screenshots live in `web/public/shots`. Capture them with the glass turned off
+so the panel is opaque, cropped to the panel bounds, otherwise whatever is
+behind the panel shows through.
 
 ## Contributing
 
@@ -333,8 +334,7 @@ Issues and pull requests are welcome.
 
 ```bash
 swift build                 # debug
-./scripts/build.sh          # release bundle
-python3 scripts/strip_comments.py
+swift build -c release      # release
 ```
 
 The codebase keeps no comments; anything worth explaining goes in this file.

@@ -82,7 +82,7 @@ export default function Shots({ base }: { base: string }) {
                 shots/{shot.file}.png
               </span>
               <span className="text-[13px] text-muted">
-                Run ./scripts/capture-shots.sh to generate this
+Screenshot not available
               </span>
             </div>
           ) : (

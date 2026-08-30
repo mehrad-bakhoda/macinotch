@@ -6,7 +6,8 @@ on:
     paths:
       - 'Sources/**'
       - 'Package.swift'
-      - 'scripts/**'
+      - 'Resources/**'
+      - '.github/workflows/build.yml'
   pull_request:
   workflow_dispatch:
 
@@ -15,12 +16,62 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+
+      - name: Compile
         run: swift build -c release
-      - name: Package
-        run: ./scripts/build.sh
+
+      - name: Assemble app bundle
+        run: |
+          set -euo pipefail
+          BUILT="$(swift build -c release --show-bin-path)"
+          APP="build/MacInotch.app"
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Sounds"
+
+          cp "$BUILT/MacInotch" "$APP/Contents/MacOS/MacInotch"
+          cp "$BUILT/notchctl"  "$APP/Contents/MacOS/notchctl"
+          cp "$BUILT/notchfand" "$APP/Contents/MacOS/notchfand"
+          cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+          cp Resources/Sounds/*.wav "$APP/Contents/Resources/Sounds/"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>                 <string>MacInotch</string>
+            <key>CFBundleDisplayName</key>          <string>MacInotch</string>
+            <key>CFBundleIdentifier</key>           <string>io.macinotch.app</string>
+            <key>CFBundleExecutable</key>           <string>MacInotch</string>
+            <key>CFBundleIconFile</key>             <string>AppIcon</string>
+            <key>CFBundlePackageType</key>          <string>APPL</string>
+            <key>CFBundleShortVersionString</key>   <string>1.0</string>
+            <key>CFBundleVersion</key>              <string>1</string>
+            <key>LSMinimumSystemVersion</key>       <string>14.0</string>
+            <key>LSUIElement</key>                  <true/>
+            <key>NSHighResolutionCapable</key>      <true/>
+            <key>NSSupportsAutomaticTermination</key> <false/>
+            <key>CFBundleURLTypes</key>
+            <array><dict>
+              <key>CFBundleURLName</key><string>io.macinotch.url</string>
+              <key>CFBundleURLSchemes</key><array><string>macinotch</string></array>
+            </dict></array>
+            <key>NSLocationWhenInUseUsageDescription</key>
+            <string>MacInotch uses your location to show local weather in the notch.</string>
+            <key>NSCalendarsFullAccessUsageDescription</key>
+            <string>MacInotch shows your next event and a join button in the notch.</string>
+            <key>NSAppleEventsUsageDescription</key>
+            <string>MacInotch reads the currently playing track from Spotify and Music.</string>
+          </dict>
+          </plist>
+          PLIST
+
+          plutil -lint "$APP/Contents/Info.plist"
+          codesign --force --deep --sign - --timestamp=none "$APP"
+
       - name: Archive
-        run: ditto -c -k --keepParent build/MacInotch.app MacInotch.zip
+        run: ditto -c -k --sequesterRsrc --keepParent build/MacInotch.app MacInotch.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: MacInotch
