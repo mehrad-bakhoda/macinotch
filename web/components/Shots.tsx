@@ -28,6 +28,13 @@ const SHOTS: Shot[] = [
       'A file shelf with named piles, AirDrop and zip in one click, and new '
       + 'screenshots caught automatically.',
   },
+  {
+    file: 'notes',
+    label: 'Notes',
+    blurb:
+      'Sticky notes backed by plain markdown files in a folder you choose, so '
+      + 'they stay editable in anything else.',
+  },
 ];
 
 export default function Shots({ base }: { base: string }) {
