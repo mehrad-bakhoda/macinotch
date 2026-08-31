@@ -16,6 +16,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var audio = AudioService.shared
     @ObservedObject private var bluetooth = BluetoothBatteryService.shared
     @ObservedObject private var notes = NotesStore.shared
+    @ObservedObject private var switcher = AccountService.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -41,6 +42,8 @@ struct ExpandedPanel: View {
                     dock
                 case .sessions:
                     sessionList
+                case .accounts:
+                    accountsTab
                 case .notes:
                     notesTab
                 }
@@ -101,9 +104,83 @@ struct ExpandedPanel: View {
         PanelTab.allCases.filter { tab in
             switch tab {
             case .sessions: return p.showSessions
+            case .accounts: return p.showAccounts
             case .notes:    return p.showNotes
             default:        return true
             }
+        }
+    }
+
+    private var accountsTab: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                sectionLabel("CODEX ACCOUNTS", action: nil)
+                Spacer()
+                if switcher.hasCurrentSession && switcher.activeId == nil {
+                    Button("Save current") { try? switcher.capture(label: "") }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(t.accent)
+                }
+            }
+
+            if switcher.accounts.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("No saved accounts yet")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(t.secondary)
+                    Text(switcher.hasCurrentSession
+                         ? "You are signed in as \(switcher.currentEmail). Save it, then "
+                           + "run codex login with another account and save that one too."
+                         : "Run codex login first, then save the session here.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(t.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 8)
+            }
+
+            ForEach(switcher.accounts) { account in
+                let active = switcher.activeId == account.id
+                PanelRow(id: "account-\(account.id)",
+                         title: account.label,
+                         subtitle: active ? "Signed in now" : account.subtitle,
+                         theme: t,
+                         onTap: active ? nil : { try? switcher.activate(account.id) },
+                         leading: {
+                             ZStack(alignment: .bottomTrailing) {
+                                 SourceIcon(source: .chatgpt, kind: .info, theme: t, side: 26)
+                                 if active {
+                                     Circle().fill(t.green)
+                                         .frame(width: 7, height: 7)
+                                         .overlay(Circle().strokeBorder(
+                                             Color.black.opacity(0.3), lineWidth: 0.5))
+                                         .offset(x: 2, y: 2)
+                                 }
+                             }
+                         },
+                         trailing: {
+                             Text(active ? "in use" : "switch")
+                                 .font(.system(size: 10, weight: .semibold))
+                                 .foregroundStyle(active ? t.tertiary : t.accent)
+                         })
+                    .contextMenu {
+                        Button("Forget this account") { switcher.forget(account.id) }
+                            .disabled(active)
+                    }
+            }
+
+            if !switcher.lastError.isEmpty {
+                Text(switcher.lastError)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.red)
+            }
+
+            Text("Saved in your keychain, this device only. Restart any running "
+                 + "codex session after switching.")
+                .font(.system(size: 9.5))
+                .foregroundStyle(t.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

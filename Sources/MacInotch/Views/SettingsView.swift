@@ -217,6 +217,7 @@ struct SettingsView: View {
             }
 
             Section("Codex accounts") {
+                Toggle("Accounts tab in the panel", isOn: $prefs.d.showAccounts)
                 accountList
             }
 
