@@ -12,8 +12,8 @@ const LEFT_METRICS = [
 const RIGHT_METRIC = { value: '34°', tone: '#0a84ff' };
 
 const ROWS = [
-  { kind: 'claude' as const, name: 'Claude Code', detail: '412K tokens, resets in 3h 51m' },
-  { kind: 'codex' as const, name: 'Codex', detail: '31.5K tokens, 12 messages' },
+  { kind: 'claude' as const, name: 'Claude Code', detail: '412K tokens, 96 messages' },
+  { kind: 'codex' as const, name: 'Codex Plus', detail: '5h limit, resets in 3h 51m' },
 ];
 
 const COLLAPSED_W = 412;

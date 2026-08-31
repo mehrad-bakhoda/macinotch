@@ -153,7 +153,7 @@ export default function Home() {
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              ['Usage window', 'Tokens burned in the current rolling window for each tool, with a chime when it resets.'],
+              ['Usage limits', 'Codex limits exactly as Codex reports them, five hour and weekly, with a chime when one resets. Claude Code publishes no quota, so it shows a local token tally.'],
               ['Session browser', 'Recent sessions per project, message counts, token spend, and a live dot for whatever is running now.'],
               ['Presence', 'Whether Claude, Claude Code or Codex is running, shown beside the notch at a glance.'],
               ['Hooks', 'A one line installer wires Claude Code so the notch pulses when it needs you and chimes when it finishes.'],

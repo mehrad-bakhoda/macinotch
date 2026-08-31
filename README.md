@@ -30,7 +30,7 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Weather** | Current conditions, high and low, from Open-Meteo |
 | **Media** | Spotify and Apple Music with artwork, scrubbing, transport and volume |
 | **Calendar** | Next event with a countdown and a join button for Zoom, Meet, Teams, Webex, Whereby, Around and Jitsi |
-| **AI usage** | Token counts for Claude Code and Codex in a rolling window, with a chime when it resets |
+| **AI usage** | Codex limits as Codex itself reports them, both the five hour and the weekly window, with a chime when one resets. Claude Code publishes no quota, so it shows a local token tally instead |
 | **Activity** | Recent notifications with optional action buttons |
 
 ### Tabs
@@ -38,8 +38,9 @@ on each side; the notch resizes to fit and hides anything that has no data.
 - **Dock**, a file shelf and clipboard history. Drag files onto the notch to
   park them, then drag them straight back out. Named piles keep work separate.
   New screenshots land here automatically.
-- **Sessions**, recent Claude Code and Codex sessions per project, with
-  message counts, token spend and a live indicator.
+- **Sessions**, Claude Code and Codex sessions with their real names, message
+  counts, token spend and a live indicator driven by whether the process is
+  actually running. Can be narrowed to running sessions only.
 - **Notes**, sticky notes backed by plain `.md` files in a folder you choose.
 
 ### Other
@@ -47,6 +48,7 @@ on each side; the notch resizes to fit and hides anything that has no data.
 - Fan monitoring, and timed boost presets through an optional root helper
 - Pomodoro and plain timers, drawn as a ring tracing the notch outline
 - Menu bar item hiding, with no Accessibility permission required
+- Several Codex accounts saved in the keychain, switched without signing in again
 - Bluetooth device battery, audio output switching
 - Notification history, searchable and persistent
 - Light and dark themes, Liquid Glass on macOS 26+, six opening animations
@@ -228,6 +230,7 @@ setup guide walks through each one.
 | Calendar | Calendar access |
 | Notification mirror, Focus awareness | Full Disk Access |
 | Fan control | An administrator password once, to install the helper |
+| Saved Codex accounts | Keychain access, granted on first use |
 | Everything else | Nothing |
 
 ---
@@ -298,6 +301,23 @@ write is overwritten within about two seconds.
 **Apple Silicon thermal sensors have no public API.** Temperatures come from
 `IOHIDEventSystem` calls resolved at runtime. `PMU tcal` is a calibration
 reference reading about 12 °C high and is excluded.
+
+**Only Codex reports its own limits.** Codex writes a `rate_limits` record
+into its rollout transcripts carrying `used_percent`, `window_minutes` and
+`resets_at` for a five hour and a weekly window, so those figures are exact.
+Claude Code writes no quota, reset or limit field anywhere under `~/.claude`,
+so its usage is counted locally from transcripts and presented as a tally
+rather than a limit. Inferring a window from message timestamps was worse than
+useless, it announced resets that had not happened.
+
+**A Codex rollout opens with a very large record.** The `session_meta` line
+carrying `cwd` runs to tens of kilobytes, so a short read truncates it, the
+parse fails and the session appears unnamed. Names otherwise come from
+`thread_name` in `~/.codex/session_index.jsonl`, and for Claude from the `name`
+field in `~/.claude/sessions`.
+
+**A recently written transcript does not mean a running session.** Liveness is
+a live pid for Claude Code and a running `codex` process for Codex.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.
