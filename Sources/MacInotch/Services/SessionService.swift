@@ -10,6 +10,7 @@ struct CodeSession: Identifiable, Equatable {
     var tokens: Int
     var model: String
     var isLive: Bool
+    var title: String = ""
 
     var projectName: String {
         if project.contains("/") {
@@ -19,6 +20,8 @@ struct CodeSession: Identifiable, Equatable {
         let parts = trimmed.split(separator: "-")
         return parts.last.map(String.init) ?? trimmed
     }
+
+    var displayName: String { title.isEmpty ? projectName : title }
 
     var ago: String {
         let seconds = Int(Date().timeIntervalSince(updatedAt))
@@ -33,15 +36,17 @@ final class SessionService: @unchecked Sendable {
     private let queue = DispatchQueue(label: "io.macinotch.sessions")
     private var timer: DispatchSourceTimer?
     private let onUpdate: @Sendable ([CodeSession]) -> Void
-    private let sources: @Sendable () -> (enabled: Bool, claude: Bool, codex: Bool)
+    private let sources: @Sendable () -> (enabled: Bool, claude: Bool, codex: Bool,
+                                          activeOnly: Bool)
 
-    init(sources: @escaping @Sendable () -> (enabled: Bool, claude: Bool, codex: Bool),
+    init(sources: @escaping @Sendable () -> (enabled: Bool, claude: Bool, codex: Bool,
+                                             activeOnly: Bool),
          onUpdate: @escaping @Sendable ([CodeSession]) -> Void) {
         self.sources = sources
         self.onUpdate = onUpdate
     }
 
-    func start(interval: TimeInterval = 45) {
+    func start(interval: TimeInterval = 20) {
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + 3, repeating: interval)
         t.setEventHandler { [weak self] in self?.tick() }
@@ -57,6 +62,7 @@ final class SessionService: @unchecked Sendable {
         var all: [CodeSession] = []
         if wanted.claude { all += Self.scanClaude() }
         if wanted.codex { all += Self.scanCodex() }
+        if wanted.activeOnly { all = all.filter(\.isLive) }
         onUpdate(Array(all.sorted { $0.updatedAt > $1.updatedAt }.prefix(16)))
     }
 
@@ -97,9 +103,36 @@ final class SessionService: @unchecked Sendable {
         return String(decoding: data, as: UTF8.self)
     }
 
+    struct LiveClaude {
+        var name: String
+        var cwd: String
+    }
+
+    static func liveClaudeSessions() -> [String: LiveClaude] {
+        let root = NSHomeDirectory() + "/.claude/sessions"
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else {
+            return [:]
+        }
+
+        var live: [String: LiveClaude] = [:]
+        for name in names where name.hasSuffix(".json") {
+            guard let data = FileManager.default.contents(atPath: root + "/" + name),
+                  let object = try? JSONSerialization.jsonObject(with: data)
+                      as? [String: Any],
+                  let pid = object["pid"] as? Int32,
+                  kill(pid, 0) == 0 else { continue }
+
+            let id = object["sessionId"] as? String ?? String(name.dropLast(5))
+            live[id] = LiveClaude(name: object["name"] as? String ?? "",
+                                  cwd: object["cwd"] as? String ?? "")
+        }
+        return live
+    }
+
     static func scanClaude(limit: Int = 10) -> [CodeSession] {
         let root = NSHomeDirectory() + "/.claude/projects"
         guard FileManager.default.fileExists(atPath: root) else { return [] }
+        let live = liveClaudeSessions()
 
         return recentFiles(root: root, limit: limit).map { url, modified in
             var messages = 0
@@ -120,28 +153,62 @@ final class SessionService: @unchecked Sendable {
                 if model.isEmpty { model = message["model"] as? String ?? "" }
             }
 
+            let id = url.deletingPathExtension().lastPathComponent
+            let session = live[id]
+
             return CodeSession(
-                id: url.deletingPathExtension().lastPathComponent,
+                id: id,
                 provider: .claude,
-                project: url.deletingLastPathComponent().lastPathComponent,
+                project: session?.cwd
+                    ?? url.deletingLastPathComponent().lastPathComponent,
                 path: url.path,
                 updatedAt: modified,
                 messages: messages,
                 tokens: tokens,
                 model: model.replacingOccurrences(of: "claude-", with: ""),
-                isLive: Date().timeIntervalSince(modified) < 300)
+                isLive: session != nil,
+                title: session?.name ?? "")
         }
+    }
+
+    static func codexThreadNames() -> [String: String] {
+        let path = NSHomeDirectory() + "/.codex/session_index.jsonl"
+        guard let handle = FileHandle(forReadingAtPath: path) else { return [:] }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        try? handle.seek(toOffset: size > 400_000 ? size - 400_000 : 0)
+        let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
+
+        var names: [String: String] = [:]
+        for line in text.split(separator: "\n") {
+            guard let raw = line.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: raw)
+                      as? [String: Any],
+                  let id = object["id"] as? String,
+                  let name = object["thread_name"] as? String,
+                  !name.isEmpty else { continue }
+            names[id] = name
+        }
+        return names
+    }
+
+    private static func codexIdentifier(_ url: URL) -> String {
+        let stem = url.deletingPathExtension().lastPathComponent
+        return stem.count > 36 ? String(stem.suffix(36)) : stem
     }
 
     static func scanCodex(limit: Int = 10) -> [CodeSession] {
         let root = NSHomeDirectory() + "/.codex/sessions"
         guard FileManager.default.fileExists(atPath: root) else { return [] }
 
+        let names = codexThreadNames()
+        let running = PresenceService.processExists(named: "codex")
+
         return recentFiles(root: root, limit: limit).map { url, modified in
             var project = ""
             var model = ""
 
-            for line in head(url, bytes: 16_000).split(separator: "\n") {
+            for line in head(url, bytes: 400_000).split(separator: "\n") {
                 guard line.contains("session_meta") || line.contains("turn_context"),
                       let raw = line.data(using: .utf8),
                       let object = try? JSONSerialization.jsonObject(with: raw)
@@ -170,16 +237,19 @@ final class SessionService: @unchecked Sendable {
                 }
             }
 
+            let id = codexIdentifier(url)
+
             return CodeSession(
-                id: url.deletingPathExtension().lastPathComponent,
+                id: id,
                 provider: .chatgpt,
-                project: project.isEmpty ? "Codex" : project,
+                project: project,
                 path: url.path,
                 updatedAt: modified,
                 messages: messages,
                 tokens: tokens,
                 model: model,
-                isLive: Date().timeIntervalSince(modified) < 300)
+                isLive: running && Date().timeIntervalSince(modified) < 180,
+                title: names[id] ?? "")
         }
     }
 }

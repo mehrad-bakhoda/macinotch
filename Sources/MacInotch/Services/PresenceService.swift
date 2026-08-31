@@ -51,7 +51,7 @@ final class PresenceService {
         if p != state?.presence { state?.presence = p }
     }
 
-    static func processExists(named name: String) -> Bool {
+    nonisolated static func processExists(named name: String) -> Bool {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0
         guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return false }

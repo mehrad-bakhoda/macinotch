@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let sessionGate = Flag(true)
     private let sessionClaudeGate = Flag(true)
     private let sessionCodexGate = Flag(true)
+    private let sessionActiveGate = Flag(false)
     private let screenshotGate = Flag(true)
     private let repoPath = PathBox()
 
@@ -141,8 +142,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         sessionService = SessionService(
             sources: { [gate = sessionGate, claude = sessionClaudeGate,
-                        codex = sessionCodexGate] in
-                (gate.get(), claude.get(), codex.get())
+                        codex = sessionCodexGate, active = sessionActiveGate] in
+                (gate.get(), claude.get(), codex.get(), active.get())
             },
             onUpdate: { list in
                 Task { @MainActor in
@@ -163,6 +164,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.sessionGate.set(Prefs.shared.d.showSessions)
                 self.sessionClaudeGate.set(Prefs.shared.d.sessionsShowClaude)
                 self.sessionCodexGate.set(Prefs.shared.d.sessionsShowCodex)
+                self.sessionActiveGate.set(Prefs.shared.d.sessionsActiveOnly)
+                self.usage?.update(windowHours: Prefs.shared.d.usageWindowHours)
                 self.screenshotGate.set(Prefs.shared.d.screenshotCatch
                                         && Prefs.shared.d.shelfEnabled)
             }
@@ -272,13 +275,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             "repo": ["branch": s.repo.branch, "summary": s.repo.summary,
                      "available": s.repo.available],
             "usage": [
-                "claude": s.usage.claude.map { ["total": $0.total, "billable": $0.billable,
-                                                "messages": $0.messages,
-                                                "resetsIn": $0.remainingText] } as Any,
-                "codex": s.usage.codex.map { ["total": $0.total, "billable": $0.billable,
-                                              "messages": $0.messages,
-                                              "resetsIn": $0.remainingText] } as Any,
+                "claude": s.usage.claude.map { ["tokens": $0.tokens, "messages": $0.messages,
+                                                "since": $0.sinceText,
+                                                "source": "local tally"] } as Any,
+                "codex": s.usage.codexTally.map { ["tokens": $0.tokens, "messages": $0.messages,
+                                                   "since": $0.sinceText,
+                                                   "source": "local tally"] } as Any,
+                "codexLimits": s.usage.codexLimits.map {
+                    ["plan": $0.plan,
+                     "usedPercent": $0.primary.usedPercent,
+                     "windowMinutes": $0.primary.windowMinutes,
+                     "resetsIn": $0.primary.remainingText,
+                     "weeklyPercent": $0.secondary?.usedPercent as Any,
+                     "weeklyResetsIn": $0.secondary?.remainingText as Any,
+                     "source": "reported by codex"] } as Any,
             ],
+            "sessions": s.sessions.map {
+                ["provider": $0.provider.rawValue, "name": $0.displayName,
+                 "project": $0.project, "live": $0.isLive,
+                 "messages": $0.messages, "tokens": $0.tokens,
+                 "model": $0.model, "ago": $0.ago]
+            },
             "tempSoC": (s.temps.soc * 10).rounded() / 10,
             "tempSoCMax": (s.temps.socMax * 10).rounded() / 10,
             "tempBattery": (s.temps.battery * 10).rounded() / 10,
@@ -337,14 +354,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return String(decoding: data, as: UTF8.self)
     }
 
-    static func announceUsageReset(_ provider: NotchSource, _ window: UsageWindow) {
+    static func announceUsageReset(_ provider: NotchSource, _ window: RateWindow) {
         guard Prefs.shared.d.notifyOnUsageReset else { return }
         var p = NotchPayload()
         p.source = provider.rawValue
         p.kind = "success"
         p.key = "usage-reset-\(provider.rawValue)"
-        p.title = "\(provider == .claude ? "Claude" : "Codex") usage window reset"
-        p.body = "A new \(Int(Prefs.shared.d.usageWindowHours))-hour window just started"
+        p.title = "Codex \(window.label) limit reset"
+        p.body = "Back to \(Int(window.usedPercent))% used, next reset in \(window.remainingText)"
         p.timeout = 8
         p.sound = true
         NotchState.shared.handle(p)

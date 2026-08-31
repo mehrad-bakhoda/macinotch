@@ -55,6 +55,7 @@ struct PrefsData: Codable, Equatable {
     var showSessions         = true
     var sessionsShowClaude   = true
     var sessionsShowCodex    = true
+    var sessionsActiveOnly   = false
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

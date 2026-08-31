@@ -228,7 +228,7 @@ struct ExpandedPanel: View {
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(t.primary)
                     Spacer()
-                    Text("\(UsageWindow.short(state.sessions.reduce(0) { $0 + $1.tokens })) tokens")
+                    Text("\(UsageSnapshot.short(state.sessions.reduce(0) { $0 + $1.tokens })) tokens")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(t.tertiary)
                         .monospacedDigit()
@@ -246,7 +246,7 @@ struct ExpandedPanel: View {
     }
 
     private func sessionRow(_ session: CodeSession) -> some View {
-        PanelRow(id: "session-\(session.id)", title: session.projectName,
+        PanelRow(id: "session-\(session.id)", title: session.displayName,
                  subtitle: "\(session.messages) msgs · \(session.ago)"
                          + (session.model.isEmpty ? "" : " · \(session.model)"),
                  theme: t,
@@ -267,7 +267,7 @@ struct ExpandedPanel: View {
                      }
                  },
                  trailing: {
-                     Text(UsageWindow.short(session.tokens))
+                     Text(UsageSnapshot.short(session.tokens))
                          .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                          .foregroundStyle(t.secondary)
                          .monospacedDigit()
@@ -995,11 +995,18 @@ struct ExpandedPanel: View {
         }
 
         if p.showUsage {
-            if p.usageShowClaude, let w = state.usage.claude {
-                out.append(RowSpec(id: "usage-claude", view: AnyView(usageRow(w))))
+            if p.usageShowClaude, let tally = state.usage.claude {
+                out.append(RowSpec(id: "usage-claude",
+                                   view: AnyView(tallyRow(.claude, tally))))
             }
-            if p.usageShowCodex, let w = state.usage.codex {
-                out.append(RowSpec(id: "usage-codex", view: AnyView(usageRow(w))))
+            if p.usageShowCodex {
+                if let limits = state.usage.codexLimits {
+                    out.append(RowSpec(id: "usage-codex",
+                                       view: AnyView(limitRow(limits))))
+                } else if let tally = state.usage.codexTally {
+                    out.append(RowSpec(id: "usage-codex",
+                                       view: AnyView(tallyRow(.chatgpt, tally))))
+                }
             }
         }
 
@@ -1232,30 +1239,66 @@ struct ExpandedPanel: View {
         .buttonStyle(.plain)
     }
 
-    private func usageRow(_ w: UsageWindow) -> some View {
-        PanelRow(id: "usage-\(w.provider.rawValue)",
-                 title: w.provider == .claude ? "Claude Code" : "Codex",
-                 subtitle: "\(w.messages) messages · resets in \(w.remainingText)",
+    private func tallyRow(_ provider: NotchSource, _ tally: LocalTally) -> some View {
+        PanelRow(id: "usage-\(provider.rawValue)",
+                 title: provider == .claude ? "Claude Code" : "Codex",
+                 subtitle: "\(tally.messages) messages in the last \(tally.sinceText)",
                  theme: t, onTap: nil,
                  leading: {
-                     SourceIcon(source: w.provider, kind: .info, theme: t, side: 28)
+                     SourceIcon(source: provider, kind: .info, theme: t, side: 28)
                  },
                  trailing: {
-                     VStack(alignment: .trailing, spacing: 3) {
-                         Text("\(UsageWindow.short(w.billable))")
+                     VStack(alignment: .trailing, spacing: 2) {
+                         Text(UsageSnapshot.short(tally.tokens))
                              .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                              .foregroundStyle(t.primary)
                              .monospacedDigit()
-                         Capsule()
-                             .fill(t.wellFill)
-                             .frame(width: 54, height: 2.5)
-                             .overlay(alignment: .leading) {
-                                 Capsule()
-                                     .fill(w.provider.tint(t))
-                                     .frame(width: max(2, 54 * w.elapsedFraction), height: 2.5)
-                             }
+                         Text("tokens")
+                             .font(.system(size: 8.5, weight: .medium))
+                             .foregroundStyle(t.tertiary)
                      }
                  })
+    }
+
+    private func limitRow(_ limits: CodexLimits) -> some View {
+        let primary = limits.primary
+        let fraction = min(1, max(0, primary.usedPercent / 100))
+        let tint = primary.usedPercent >= 90 ? t.red
+            : primary.usedPercent >= 70 ? t.orange : NotchSource.chatgpt.tint(t)
+
+        return PanelRow(id: "usage-codex",
+                        title: limits.plan.isEmpty ? "Codex"
+                            : "Codex \(limits.plan.capitalized)",
+                        subtitle: "\(primary.label) limit, resets in \(primary.remainingText)",
+                        theme: t, onTap: nil,
+                        leading: {
+                            SourceIcon(source: .chatgpt, kind: .info, theme: t, side: 28)
+                        },
+                        trailing: {
+                            VStack(alignment: .trailing, spacing: 3) {
+                                HStack(spacing: 4) {
+                                    if let weekly = limits.secondary {
+                                        Text("\(Int(weekly.usedPercent))% wk")
+                                            .font(.system(size: 8.5, weight: .medium))
+                                            .foregroundStyle(t.tertiary)
+                                            .monospacedDigit()
+                                    }
+                                    Text("\(Int(primary.usedPercent))%")
+                                        .font(.system(size: 12.5, weight: .semibold,
+                                                      design: .rounded))
+                                        .foregroundStyle(t.primary)
+                                        .monospacedDigit()
+                                }
+                                Capsule()
+                                    .fill(t.wellFill)
+                                    .frame(width: 54, height: 2.5)
+                                    .overlay(alignment: .leading) {
+                                        Capsule()
+                                            .fill(tint)
+                                            .frame(width: max(2, 54 * fraction), height: 2.5)
+                                    }
+                            }
+                        })
     }
 
     private var activity: some View {
