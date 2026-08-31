@@ -216,7 +216,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Codex accounts") {
+            Section("Accounts") {
                 Toggle("Accounts tab in the panel", isOn: $prefs.d.showAccounts)
                 accountList
             }
@@ -925,64 +925,80 @@ struct SettingsView: View {
     }
 
     private var accountList: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if switcher.accounts.isEmpty {
-                Text("Sign in with codex login as usual, then save the session here. "
-                     + "You can save several and swap between them without signing in again.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            ForEach(switcher.accounts) { account in
-                HStack(spacing: 9) {
-                    Image(systemName: switcher.activeId == account.id
-                          ? "checkmark.circle.fill" : "person.crop.circle")
-                        .foregroundStyle(switcher.activeId == account.id ? .green : .secondary)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(account.label).font(.system(size: 12, weight: .medium))
-                        Text(account.subtitle).font(.caption2).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if switcher.activeId == account.id {
-                        Text("in use").font(.caption2).foregroundStyle(.secondary)
-                    } else {
-                        Button("Use") { act { try switcher.activate(account.id) } }
-                            .buttonStyle(.bordered).controlSize(.small)
-                    }
-                    Button {
-                        switcher.forget(account.id)
-                    } label: { Image(systemName: "trash") }
-                        .buttonStyle(.borderless)
-                        .disabled(switcher.activeId == account.id)
-                }
-            }
-
-            Divider()
-
-            HStack(spacing: 8) {
-                TextField("Name for the current session", text: $nav.newAccountLabel)
-                    .textFieldStyle(.roundedBorder)
-                Button("Save current") {
-                    act { try switcher.capture(label: nav.newAccountLabel) }
-                    nav.newAccountLabel = ""
-                }
-                .disabled(!switcher.hasCurrentSession)
-            }
-
-            if !switcher.currentEmail.isEmpty && switcher.activeId == nil {
-                Text("Signed in as \(switcher.currentEmail), not saved yet.")
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(AccountProvider.allCases) { provider in
+                providerSection(provider)
             }
             if !switcher.lastError.isEmpty {
                 Text(switcher.lastError).font(.caption).foregroundStyle(.red)
             }
-
-            Text("Sessions are held in your login keychain, marked for this device only, "
-                 + "and never leave the machine. MacInotch never sees your password and "
-                 + "never exposes accounts over its local endpoint. Switching rewrites "
-                 + "~/.codex/auth.json, so restart any running codex session afterwards.")
+            Text("Saved sessions are held in your login keychain, marked for this "
+                 + "device only, so they are never synced and never written to disk "
+                 + "in the clear. MacInotch never sees your password and never exposes "
+                 + "accounts over its local endpoint.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+    }
+
+    private func providerSection(_ provider: AccountProvider) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(provider.title).font(.system(size: 12, weight: .semibold))
+
+            ForEach(switcher.accounts(for: provider)) { account in
+                accountRow(account, provider: provider)
+            }
+
+            if switcher.hasSession(provider) {
+                saveRow(provider)
+            } else {
+                Text("No session file yet. Sign in with \(provider.loginHint) first.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Text(provider.restartHint).font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    private func accountRow(_ account: SavedAccount,
+                            provider: AccountProvider) -> some View {
+        let active = switcher.activeId[provider] == account.id
+        return HStack(spacing: 9) {
+            Image(systemName: active ? "checkmark.circle.fill" : "person.crop.circle")
+                .foregroundStyle(active ? Color.green : Color.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(account.label).font(.system(size: 12, weight: .medium))
+                Text(account.subtitle).font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if active {
+                Text("in use").font(.caption2).foregroundStyle(.secondary)
+            } else {
+                Button("Use") { act { try switcher.activate(account.id) } }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+            Button { switcher.forget(account.id) } label: { Image(systemName: "trash") }
+                .buttonStyle(.borderless)
+                .disabled(active)
+        }
+    }
+
+    private func saveRow(_ provider: AccountProvider) -> some View {
+        let signedIn = switcher.currentEmail[provider] ?? ""
+        let unsaved = switcher.activeId[provider] == nil
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                TextField("Name for the current session", text: $nav.newAccountLabel)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save current") {
+                    act { try switcher.capture(provider, label: nav.newAccountLabel) }
+                    nav.newAccountLabel = ""
+                }
+            }
+            if !signedIn.isEmpty && unsaved {
+                Text("Signed in as \(signedIn), not saved yet.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 
     private func act(_ body: () throws -> Void) {

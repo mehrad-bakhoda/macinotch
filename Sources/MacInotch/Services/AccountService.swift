@@ -1,8 +1,60 @@
 import Foundation
 import Security
 
-struct CodexAccount: Identifiable, Codable, Equatable {
+enum AccountProvider: String, Codable, CaseIterable, Identifiable {
+    case codex
+    case claude
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .codex: return "Codex"
+        case .claude: return "Claude Code"
+        }
+    }
+
+    var source: NotchSource {
+        switch self {
+        case .codex: return .chatgpt
+        case .claude: return .claude
+        }
+    }
+
+    var credentialURL: URL {
+        switch self {
+        case .codex:
+            return URL(fileURLWithPath: NSHomeDirectory() + "/.codex/auth.json")
+        case .claude:
+            return URL(fileURLWithPath: NSHomeDirectory() + "/.claude/.credentials.json")
+        }
+    }
+
+    var sidecarURL: URL? {
+        switch self {
+        case .codex: return nil
+        case .claude: return URL(fileURLWithPath: NSHomeDirectory() + "/.claude.json")
+        }
+    }
+
+    var loginHint: String {
+        switch self {
+        case .codex: return "codex login"
+        case .claude: return "claude then /login"
+        }
+    }
+
+    var restartHint: String {
+        switch self {
+        case .codex: return "Restart any running codex session after switching."
+        case .claude: return "Restart any running claude session after switching."
+        }
+    }
+}
+
+struct SavedAccount: Identifiable, Codable, Equatable {
     var id: String
+    var provider: AccountProvider
     var label: String
     var email: String
     var plan: String
@@ -18,7 +70,7 @@ struct CodexAccount: Identifiable, Codable, Equatable {
 }
 
 enum AccountError: LocalizedError {
-    case noSession
+    case noSession(AccountProvider)
     case unreadable
     case keychain(OSStatus)
     case notStored
@@ -26,34 +78,40 @@ enum AccountError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noSession:
-            return "No Codex session found. Run codex login first."
+        case .noSession(let provider):
+            return "No \(provider.title) session on disk. Sign in with "
+                + "\(provider.loginHint) first."
         case .unreadable:
-            return "The Codex session file could not be read."
+            return "That session file could not be read."
         case .keychain(let status):
             return "Keychain refused the request (\(status))."
         case .notStored:
             return "That account is no longer in the keychain."
         case .writeFailed:
-            return "The Codex session file could not be replaced."
+            return "The session file could not be replaced."
         }
     }
+}
+
+private struct Envelope: Codable {
+    var version: Int
+    var credential: Data
+    var sidecar: Data?
 }
 
 @MainActor
 final class AccountService: ObservableObject {
     static let shared = AccountService()
 
-    @Published private(set) var accounts: [CodexAccount] = []
-    @Published private(set) var activeId: String?
-    @Published private(set) var currentEmail: String = ""
+    @Published private(set) var accounts: [SavedAccount] = []
+    @Published private(set) var activeId: [AccountProvider: String] = [:]
+    @Published private(set) var currentEmail: [AccountProvider: String] = [:]
     @Published var lastError: String = ""
 
-    private let service = "io.macinotch.codex-accounts"
+    private let service = "io.macinotch.accounts"
     private let metadataURL: URL
-    private let authURL = URL(fileURLWithPath: NSHomeDirectory() + "/.codex/auth.json")
     private var watchdog: Timer?
-    private var lastSeenStamp: Date?
+    private var lastSeenStamp: [AccountProvider: Date] = [:]
 
     private init() {
         let dir = FileManager.default
@@ -74,96 +132,120 @@ final class AccountService: ObservableObject {
 
     func stop() { watchdog?.invalidate(); watchdog = nil }
 
-    var hasCurrentSession: Bool { FileManager.default.fileExists(atPath: authURL.path) }
+    func accounts(for provider: AccountProvider) -> [SavedAccount] {
+        accounts.filter { $0.provider == provider }
+    }
+
+    func hasSession(_ provider: AccountProvider) -> Bool {
+        FileManager.default.fileExists(atPath: provider.credentialURL.path)
+    }
+
+    var availableProviders: [AccountProvider] {
+        AccountProvider.allCases.filter { hasSession($0) || !accounts(for: $0).isEmpty }
+    }
 
     func refresh() {
-        guard let data = try? Data(contentsOf: authURL) else {
-            activeId = nil
-            currentEmail = ""
+        for provider in AccountProvider.allCases { refresh(provider) }
+    }
+
+    private func refresh(_ provider: AccountProvider) {
+        guard let data = try? Data(contentsOf: provider.credentialURL) else {
+            activeId[provider] = nil
+            currentEmail[provider] = ""
             return
         }
 
-        let identity = Self.identity(from: data)
-        currentEmail = identity.email
+        let identity = self.identity(provider, credential: data)
+        currentEmail[provider] = identity.email
 
         let match = accounts.first {
-            (!$0.accountId.isEmpty && $0.accountId == identity.accountId)
-                || (!$0.email.isEmpty && $0.email == identity.email)
+            $0.provider == provider
+                && ((!$0.accountId.isEmpty && $0.accountId == identity.accountId)
+                    || (!$0.email.isEmpty && $0.email == identity.email))
         }
-        activeId = match?.id
+        activeId[provider] = match?.id
 
-        let stamp = (try? authURL.resourceValues(forKeys: [.contentModificationDateKey]))?
-            .contentModificationDate
-        if let match, let stamp, stamp != lastSeenStamp {
-            lastSeenStamp = stamp
-            try? writeKeychain(id: match.id, data: data)
+        let stamp = (try? provider.credentialURL
+            .resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+        if let match, let stamp, stamp != lastSeenStamp[provider] {
+            lastSeenStamp[provider] = stamp
+            try? writeKeychain(id: match.id, envelope: envelope(for: provider,
+                                                               credential: data))
         }
     }
 
-    func capture(label: String) throws {
-        guard FileManager.default.fileExists(atPath: authURL.path) else {
-            throw AccountError.noSession
+    func capture(_ provider: AccountProvider, label: String) throws {
+        guard hasSession(provider) else { throw AccountError.noSession(provider) }
+        guard let data = try? Data(contentsOf: provider.credentialURL) else {
+            throw AccountError.unreadable
         }
-        guard let data = try? Data(contentsOf: authURL) else { throw AccountError.unreadable }
 
-        let identity = Self.identity(from: data)
+        let identity = self.identity(provider, credential: data)
         let existing = accounts.firstIndex {
-            !$0.accountId.isEmpty && $0.accountId == identity.accountId
+            $0.provider == provider && !$0.accountId.isEmpty
+                && $0.accountId == identity.accountId
         }
 
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = trimmed.isEmpty
-            ? (identity.email.isEmpty ? "Codex account" : identity.email)
+            ? (identity.email.isEmpty ? "\(provider.title) account" : identity.email)
             : trimmed
+        let box = envelope(for: provider, credential: data)
 
         if let existing {
             var profile = accounts[existing]
             profile.label = name
             profile.email = identity.email
             profile.plan = identity.plan
-            try writeKeychain(id: profile.id, data: data)
+            try writeKeychain(id: profile.id, envelope: box)
             accounts[existing] = profile
         } else {
-            let profile = CodexAccount(id: UUID().uuidString,
+            let profile = SavedAccount(id: UUID().uuidString,
+                                       provider: provider,
                                        label: name,
                                        email: identity.email,
                                        plan: identity.plan,
                                        accountId: identity.accountId,
                                        addedAt: Date(),
                                        lastUsedAt: Date())
-            try writeKeychain(id: profile.id, data: data)
+            try writeKeychain(id: profile.id, envelope: box)
             accounts.append(profile)
         }
         save()
-        refresh()
+        refresh(provider)
     }
 
     func activate(_ id: String) throws {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else {
             throw AccountError.notStored
         }
-        guard let blob = readKeychain(id: id) else { throw AccountError.notStored }
+        let provider = accounts[index].provider
+        guard let box = readKeychain(id: id) else { throw AccountError.notStored }
 
-        if let current = try? Data(contentsOf: authURL) {
-            let identity = Self.identity(from: current)
-            let known = accounts.contains {
-                !$0.accountId.isEmpty && $0.accountId == identity.accountId
+        if let current = try? Data(contentsOf: provider.credentialURL) {
+            let identity = self.identity(provider, credential: current)
+            let known = accounts.first {
+                $0.provider == provider && !$0.accountId.isEmpty
+                    && $0.accountId == identity.accountId
             }
-            if !known {
-                try? capture(label: identity.email.isEmpty ? "Previous account"
-                                                           : identity.email)
-            } else if let active = accounts.first(where: {
-                !$0.accountId.isEmpty && $0.accountId == identity.accountId
-            }) {
-                try? writeKeychain(id: active.id, data: current)
+            if let known {
+                try? writeKeychain(id: known.id,
+                                   envelope: envelope(for: provider, credential: current))
+            } else {
+                try? capture(provider, label: identity.email.isEmpty
+                             ? "Previous \(provider.title) account" : identity.email)
             }
         }
 
-        try replaceAuthFile(with: blob)
+        try replace(provider.credentialURL, with: box.credential)
+        if let sidecar = box.sidecar, let url = provider.sidecarURL {
+            try? mergeSidecar(sidecar, into: url)
+        }
+
         accounts[index].lastUsedAt = Date()
         save()
-        lastSeenStamp = nil
-        refresh()
+        lastSeenStamp[provider] = nil
+        refresh(provider)
     }
 
     func rename(_ id: String, to label: String) {
@@ -181,11 +263,43 @@ final class AccountService: ObservableObject {
         refresh()
     }
 
-    private func replaceAuthFile(with data: Data) throws {
-        let directory = authURL.deletingLastPathComponent()
+    private func envelope(for provider: AccountProvider, credential: Data) -> Envelope {
+        var sidecar: Data?
+        if let url = provider.sidecarURL,
+           let raw = try? Data(contentsOf: url),
+           let root = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] {
+            var carried: [String: Any] = [:]
+            for key in ["oauthAccount", "userID"] where root[key] != nil {
+                carried[key] = root[key]
+            }
+            if !carried.isEmpty {
+                sidecar = try? JSONSerialization.data(withJSONObject: carried)
+            }
+        }
+        return Envelope(version: 1, credential: credential, sidecar: sidecar)
+    }
+
+    private func mergeSidecar(_ sidecar: Data, into url: URL) throws {
+        guard let carried = try? JSONSerialization.jsonObject(with: sidecar)
+                  as? [String: Any],
+              let raw = try? Data(contentsOf: url),
+              var root = try? JSONSerialization.jsonObject(with: raw) as? [String: Any]
+        else { return }
+
+        for (key, value) in carried { root[key] = value }
+        guard let merged = try? JSONSerialization.data(withJSONObject: root,
+                                                       options: [.prettyPrinted]) else {
+            return
+        }
+        try replace(url, with: merged)
+    }
+
+    private func replace(_ url: URL, with data: Data) throws {
+        let directory = url.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory,
                                                  withIntermediateDirectories: true)
-        let temporary = directory.appendingPathComponent(".macinotch-auth-\(UUID().uuidString)")
+        let temporary = directory
+            .appendingPathComponent(".macinotch-swap-\(UUID().uuidString)")
 
         guard FileManager.default.createFile(
             atPath: temporary.path, contents: data,
@@ -194,13 +308,13 @@ final class AccountService: ObservableObject {
         }
 
         do {
-            _ = try FileManager.default.replaceItemAt(authURL, withItemAt: temporary)
+            _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
         } catch {
             try? FileManager.default.removeItem(at: temporary)
             throw AccountError.writeFailed
         }
         try? FileManager.default.setAttributes([.posixPermissions: 0o600],
-                                               ofItemAtPath: authURL.path)
+                                               ofItemAtPath: url.path)
     }
 
     private func query(id: String) -> [String: Any] {
@@ -210,35 +324,35 @@ final class AccountService: ObservableObject {
          kSecAttrSynchronizable as String: false]
     }
 
-    private func writeKeychain(id: String, data: Data) throws {
+    private func writeKeychain(id: String, envelope box: Envelope) throws {
+        guard let data = try? JSONEncoder().encode(box) else {
+            throw AccountError.unreadable
+        }
         let base = query(id: id)
-        let attributes: [String: Any] = [
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        ]
-
-        let status = SecItemUpdate(base as CFDictionary, attributes as CFDictionary)
+        let status = SecItemUpdate(base as CFDictionary,
+                                   [kSecValueData as String: data] as CFDictionary)
         if status == errSecSuccess { return }
         if status != errSecItemNotFound { throw AccountError.keychain(status) }
 
         var insert = base
         insert[kSecValueData as String] = data
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        insert[kSecAttrLabel as String] = "MacInotch Codex account"
+        insert[kSecAttrLabel as String] = "MacInotch saved account"
         let added = SecItemAdd(insert as CFDictionary, nil)
         guard added == errSecSuccess else { throw AccountError.keychain(added) }
     }
 
-    private func readKeychain(id: String) -> Data? {
+    private func readKeychain(id: String) -> Envelope? {
         var request = query(id: id)
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(request as CFDictionary, &item) == errSecSuccess else {
-            return nil
-        }
-        return item as? Data
+        guard SecItemCopyMatching(request as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+
+        if let box = try? JSONDecoder().decode(Envelope.self, from: data) { return box }
+        return Envelope(version: 0, credential: data, sidecar: nil)
     }
 
     private func deleteKeychain(id: String) {
@@ -247,7 +361,7 @@ final class AccountService: ObservableObject {
 
     private func load() {
         guard let data = try? Data(contentsOf: metadataURL),
-              let stored = try? JSONDecoder().decode([CodexAccount].self, from: data) else {
+              let stored = try? JSONDecoder().decode([SavedAccount].self, from: data) else {
             return
         }
         accounts = stored
@@ -267,7 +381,14 @@ final class AccountService: ObservableObject {
         var accountId = ""
     }
 
-    static func identity(from data: Data) -> Identity {
+    func identity(_ provider: AccountProvider, credential: Data) -> Identity {
+        switch provider {
+        case .codex: return Self.codexIdentity(credential)
+        case .claude: return Self.claudeIdentity()
+        }
+    }
+
+    static func codexIdentity(_ data: Data) -> Identity {
         var identity = Identity()
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let tokens = root["tokens"] as? [String: Any] else { return identity }
@@ -284,6 +405,21 @@ final class AccountService: ObservableObject {
                 identity.accountId = auth["chatgpt_account_id"] as? String ?? ""
             }
         }
+        return identity
+    }
+
+    static func claudeIdentity() -> Identity {
+        var identity = Identity()
+        guard let url = AccountProvider.claude.sidecarURL,
+              let raw = try? Data(contentsOf: url),
+              let root = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+              let account = root["oauthAccount"] as? [String: Any] else { return identity }
+
+        identity.email = account["emailAddress"] as? String ?? ""
+        identity.accountId = account["accountUuid"] as? String ?? ""
+        let organisation = account["organizationName"] as? String ?? ""
+        let tier = account["seatTier"] as? String ?? ""
+        identity.plan = organisation.isEmpty ? tier : organisation
         return identity
     }
 

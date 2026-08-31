@@ -112,76 +112,96 @@ struct ExpandedPanel: View {
     }
 
     private var accountsTab: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack {
-                sectionLabel("CODEX ACCOUNTS", action: nil)
-                Spacer()
-                if switcher.hasCurrentSession && switcher.activeId == nil {
-                    Button("Save current") { try? switcher.capture(label: "") }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(t.accent)
-                }
-            }
-
-            if switcher.accounts.isEmpty {
+        VStack(alignment: .leading, spacing: 12) {
+            if switcher.availableProviders.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("No saved accounts yet")
+                    Text("Nothing to switch yet")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(t.secondary)
-                    Text(switcher.hasCurrentSession
-                         ? "You are signed in as \(switcher.currentEmail). Save it, then "
-                           + "run codex login with another account and save that one too."
-                         : "Run codex login first, then save the session here.")
+                    Text("Sign in with codex login or claude, then save the session here.")
                         .font(.system(size: 10.5))
                         .foregroundStyle(t.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, 8)
             }
 
-            ForEach(switcher.accounts) { account in
-                let active = switcher.activeId == account.id
-                PanelRow(id: "account-\(account.id)",
-                         title: account.label,
-                         subtitle: active ? "Signed in now" : account.subtitle,
-                         theme: t,
-                         onTap: active ? nil : { try? switcher.activate(account.id) },
-                         leading: {
-                             ZStack(alignment: .bottomTrailing) {
-                                 SourceIcon(source: .chatgpt, kind: .info, theme: t, side: 26)
-                                 if active {
-                                     Circle().fill(t.green)
-                                         .frame(width: 7, height: 7)
-                                         .overlay(Circle().strokeBorder(
-                                             Color.black.opacity(0.3), lineWidth: 0.5))
-                                         .offset(x: 2, y: 2)
-                                 }
-                             }
-                         },
-                         trailing: {
-                             Text(active ? "in use" : "switch")
-                                 .font(.system(size: 10, weight: .semibold))
-                                 .foregroundStyle(active ? t.tertiary : t.accent)
-                         })
-                    .contextMenu {
-                        Button("Forget this account") { switcher.forget(account.id) }
-                            .disabled(active)
-                    }
+            ForEach(switcher.availableProviders) { provider in
+                providerBlock(provider)
             }
 
             if !switcher.lastError.isEmpty {
                 Text(switcher.lastError)
                     .font(.system(size: 10))
                     .foregroundStyle(t.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func providerBlock(_ provider: AccountProvider) -> some View {
+        let saved = switcher.accounts(for: provider)
+        let active = switcher.activeId[provider]
+        let signedIn = switcher.currentEmail[provider] ?? ""
+
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                sectionLabel(provider.title.uppercased(), action: nil)
+                Spacer()
+                if switcher.hasSession(provider) && active == nil {
+                    Button("Save current") {
+                        try? switcher.capture(provider, label: "")
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(t.accent)
+                }
             }
 
-            Text("Saved in your keychain, this device only. Restart any running "
-                 + "codex session after switching.")
-                .font(.system(size: 9.5))
-                .foregroundStyle(t.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            if saved.isEmpty {
+                Text(switcher.hasSession(provider)
+                     ? (signedIn.isEmpty
+                        ? "Signed in. Save it, then sign in with another account."
+                        : "Signed in as \(signedIn). Save it, then sign in with another.")
+                     : "No session on disk. Run \(provider.loginHint) first.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(t.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            ForEach(saved) { account in
+                accountRow(account, isActive: active == account.id)
+            }
         }
+    }
+
+    private func accountRow(_ account: SavedAccount, isActive: Bool) -> some View {
+        PanelRow(id: "account-\(account.id)",
+                 title: account.label,
+                 subtitle: isActive ? "Signed in now" : account.subtitle,
+                 theme: t,
+                 onTap: isActive ? nil : { try? switcher.activate(account.id) },
+                 leading: {
+                     ZStack(alignment: .bottomTrailing) {
+                         SourceIcon(source: account.provider.source, kind: .info,
+                                    theme: t, side: 26)
+                         if isActive {
+                             Circle().fill(t.green)
+                                 .frame(width: 7, height: 7)
+                                 .overlay(Circle().strokeBorder(
+                                     Color.black.opacity(0.3), lineWidth: 0.5))
+                                 .offset(x: 2, y: 2)
+                         }
+                     }
+                 },
+                 trailing: {
+                     Text(isActive ? "in use" : "switch")
+                         .font(.system(size: 10, weight: .semibold))
+                         .foregroundStyle(isActive ? t.tertiary : t.accent)
+                 })
+            .contextMenu {
+                Button("Forget this account") { switcher.forget(account.id) }
+                    .disabled(isActive)
+            }
     }
 
     private var notesTab: some View {

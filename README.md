@@ -48,7 +48,8 @@ on each side; the notch resizes to fit and hides anything that has no data.
 - Fan monitoring, and timed boost presets through an optional root helper
 - Pomodoro and plain timers, drawn as a ring tracing the notch outline
 - Menu bar item hiding, with no Accessibility permission required
-- Several Codex accounts saved in the keychain, switched without signing in again
+- Several Codex and Claude Code accounts saved in the keychain, switched from the
+  Accounts tab without signing in again
 - Bluetooth device battery, audio output switching
 - Notification history, searchable and persistent
 - Light and dark themes, Liquid Glass on macOS 26+, six opening animations
@@ -230,7 +231,7 @@ setup guide walks through each one.
 | Calendar | Calendar access |
 | Notification mirror, Focus awareness | Full Disk Access |
 | Fan control | An administrator password once, to install the helper |
-| Saved Codex accounts | Keychain access, granted on first use |
+| Saved accounts | Keychain access, granted on first use |
 | Everything else | Nothing |
 
 ---

@@ -19,18 +19,24 @@ called "Codex". A session counts as live when its process is actually running,
 not when its transcript happens to be recent, and the list can be narrowed to
 running sessions only.
 
-### Saved Codex accounts
+### Saved accounts for Codex and Claude Code
 
-Sign in with the codex CLI as usual, then save that session under a name. Save
-as many as you like and switch between them from the new Accounts tab without
-signing in again.
+Sign in with the codex or claude CLI as usual, then save that session under a
+name. Save as many as you like and switch between them from the new Accounts
+tab without signing in again.
+
+Claude Code only appears once it keeps a credential file of its own. If you
+signed in through the Claude desktop app, the session lives inside that app's
+encrypted store rather than in a file, and there is nothing for MacInotch to
+save. The tab says so instead of pretending otherwise.
 
 Sessions are held in the login keychain, marked accessible only when unlocked
 and only on this device, so they are never synced and never written to disk in
 the clear. MacInotch never sees your password and runs no login flow of its
-own. Switching replaces the Codex session file through an atomic rename at
-owner only permissions, and saves the outgoing session first so a switch
-cannot strand an account.
+own. Switching replaces the session file through an atomic rename at owner only
+permissions, and saves the outgoing session first so a switch cannot strand an
+account. The credential itself is treated as opaque bytes, so nothing depends
+on the shape of a format that is not ours.
 
 ### Install
 
