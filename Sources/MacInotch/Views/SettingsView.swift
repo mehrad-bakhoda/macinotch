@@ -9,6 +9,7 @@ final class SettingsNav: ObservableObject {
     @Published var boostMinutes: Double = 5
     @Published var historySearch: String = ""
     @Published var historySource: NotchSource? = nil
+    @Published var newAccountLabel: String = ""
 }
 
 struct SettingsView: View {
@@ -22,6 +23,7 @@ struct SettingsView: View {
     @ObservedObject private var calendar = CalendarService.shared
     @ObservedObject private var weather = WeatherService.shared
     @ObservedObject private var themes = ThemeManager.shared
+    @ObservedObject private var switcher = AccountService.shared
 
     enum Tab: String, CaseIterable, Identifiable {
         case general = "General"
@@ -206,6 +208,16 @@ struct SettingsView: View {
                     .disabled(!prefs.d.showSessions)
                 Toggle("Codex", isOn: $prefs.d.sessionsShowCodex)
                     .disabled(!prefs.d.showSessions)
+                Toggle("Only sessions that are still running",
+                       isOn: $prefs.d.sessionsActiveOnly)
+                    .disabled(!prefs.d.showSessions)
+                Text("A session counts as running when its process is alive, "
+                     + "not merely when its transcript was written to recently.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Codex accounts") {
+                accountList
             }
 
             Section("AI usage") {
@@ -220,9 +232,9 @@ struct SettingsView: View {
                     Slider(value: $prefs.d.usageWindowHours, in: 1...24, step: 1)
                         .frame(width: 170)
                 }
-                Text("\(Int(prefs.d.usageWindowHours)) hours, counted from your local "
-                     + "Claude Code and Codex transcripts, not from the provider. "
-                     + "Restart to apply a new window length.")
+                Text("Codex reports its own limits, so its figures are the real ones. "
+                     + "Claude Code publishes no quota anywhere on disk, so its figure "
+                     + "is a local token tally over the window length above.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -908,6 +920,76 @@ struct SettingsView: View {
                 NSPasteboard.general.setString(text, forType: .string)
             } label: { Image(systemName: "doc.on.doc") }
                 .buttonStyle(.borderless)
+        }
+    }
+
+    private var accountList: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if switcher.accounts.isEmpty {
+                Text("Sign in with codex login as usual, then save the session here. "
+                     + "You can save several and swap between them without signing in again.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            ForEach(switcher.accounts) { account in
+                HStack(spacing: 9) {
+                    Image(systemName: switcher.activeId == account.id
+                          ? "checkmark.circle.fill" : "person.crop.circle")
+                        .foregroundStyle(switcher.activeId == account.id ? .green : .secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(account.label).font(.system(size: 12, weight: .medium))
+                        Text(account.subtitle).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if switcher.activeId == account.id {
+                        Text("in use").font(.caption2).foregroundStyle(.secondary)
+                    } else {
+                        Button("Use") { act { try switcher.activate(account.id) } }
+                            .buttonStyle(.bordered).controlSize(.small)
+                    }
+                    Button {
+                        switcher.forget(account.id)
+                    } label: { Image(systemName: "trash") }
+                        .buttonStyle(.borderless)
+                        .disabled(switcher.activeId == account.id)
+                }
+            }
+
+            Divider()
+
+            HStack(spacing: 8) {
+                TextField("Name for the current session", text: $nav.newAccountLabel)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save current") {
+                    act { try switcher.capture(label: nav.newAccountLabel) }
+                    nav.newAccountLabel = ""
+                }
+                .disabled(!switcher.hasCurrentSession)
+            }
+
+            if !switcher.currentEmail.isEmpty && switcher.activeId == nil {
+                Text("Signed in as \(switcher.currentEmail), not saved yet.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if !switcher.lastError.isEmpty {
+                Text(switcher.lastError).font(.caption).foregroundStyle(.red)
+            }
+
+            Text("Sessions are held in your login keychain, marked for this device only, "
+                 + "and never leave the machine. MacInotch never sees your password and "
+                 + "never exposes accounts over its local endpoint. Switching rewrites "
+                 + "~/.codex/auth.json, so restart any running codex session afterwards.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func act(_ body: () throws -> Void) {
+        do {
+            try body()
+            switcher.lastError = ""
+        } catch {
+            switcher.lastError = error.localizedDescription
         }
     }
 }
