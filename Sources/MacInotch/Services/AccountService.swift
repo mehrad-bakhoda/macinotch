@@ -174,6 +174,7 @@ final class AccountService: ObservableObject {
     private var watchdog: Timer?
     private var lastSeenStamp: [AccountProvider: Date] = [:]
     private var switchedAt: [AccountProvider: Date] = [:]
+    private var lastWritten: [String: Int] = [:]
     private var resetAnnounced: Set<String> = []
 
     private init() {
@@ -236,6 +237,11 @@ final class AccountService: ObservableObject {
             .resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         if let match, let stamp, stamp != lastSeenStamp[provider] {
             lastSeenStamp[provider] = stamp
+
+            let fingerprint = data.hashValue
+            guard lastWritten[match.id] != fingerprint else { return }
+            lastWritten[match.id] = fingerprint
+
             let box = envelope(for: provider, credential: data)
             Task.detached(priority: .utility) {
                 let ok = (try? Self.writeKeychainOffMain(id: match.id,

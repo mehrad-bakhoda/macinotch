@@ -2,6 +2,18 @@ import AppKit
 import Foundation
 import Security
 
+actor TokenCache {
+    private var held: String?
+    private var loaded = false
+
+    var value: String? { loaded ? held : nil }
+
+    func set(_ token: String?) {
+        held = token
+        loaded = token != nil
+    }
+}
+
 struct WorkflowFailure: Identifiable, Equatable {
     var id: Int
     var repo: String
@@ -69,7 +81,7 @@ final class GitHubService: ObservableObject {
     func start() {
         timer?.invalidate()
         Task.detached(priority: .utility) {
-            let present = Self.readToken() != nil
+            let present = await Self.tokenOffMain() != nil
             await MainActor.run { GitHubService.shared.beginPolling(present) }
         }
     }
@@ -94,7 +106,8 @@ final class GitHubService: ObservableObject {
         announced.removeAll()
         Task.detached(priority: .utility) {
             Self.storeToken(trimmed)
-            await MainActor.run { GitHubService.shared.start() }
+            await Self.cache.set(trimmed)
+            await MainActor.run { GitHubService.shared.beginPolling(true) }
         }
     }
 
@@ -208,6 +221,7 @@ final class GitHubService: ObservableObject {
         snapshot = GitHubSnapshot()
         lastError = ""
         Task.detached(priority: .utility) {
+            await Self.cache.set(nil)
             SecItemDelete(Self.query() as CFDictionary)
         }
     }
@@ -265,8 +279,13 @@ final class GitHubService: ObservableObject {
         return try? JSONSerialization.jsonObject(with: data)
     }
 
+    nonisolated static let cache = TokenCache()
+
     nonisolated static func tokenOffMain() async -> String? {
-        await Task.detached(priority: .utility) { Self.readToken() }.value
+        if let held = await cache.value { return held }
+        let fetched = await Task.detached(priority: .utility) { Self.readToken() }.value
+        await cache.set(fetched)
+        return fetched
     }
 
     func refresh() async {

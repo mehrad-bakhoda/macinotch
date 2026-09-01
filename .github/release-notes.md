@@ -1,31 +1,26 @@
-Mail that scrolls, sorts itself by what needs you, and offers a first draft.
+Far fewer keychain prompts, and a reply button only where a reply is wanted.
 
-### It sorts itself
+### The keychain prompts
 
-Every message is put into one of four buckets by the on device model, judged by
-what you have to do rather than how the message sounds: needs you now, wants a
-reply, for information, or marketing. Each carries a small tag, and the ones
-waiting on you get a dot.
+The saved token was read from the keychain on every single API call, which
+meant about ten reads every three minutes, and a prompt for each one whenever
+macOS had not been told to always allow. That was careless.
 
-The header counts how many are actually waiting. Tapping that count hides
-everything else, which on a normal morning is most of it.
+It is read once now and held for as long as the app runs. Signing in does not
+read it at all, since the value is already in hand. Saved account sessions are
+rewritten only when the credential has actually changed rather than whenever
+the file is touched, and the tools rewrite that file on every token refresh.
 
-The distinction that matters is between a message that demands something and
-one that merely reports something. A notice saying review this if it was not
-you is not urgent; a named deadline is.
+The prompt itself comes from the ad-hoc signature changing with each build, so
+macOS treats every version as a new application. Always Allow settles it for a
+given version.
 
-### It scrolls
+### Reply where it belongs
 
-The list ran off the bottom of the panel with no way to reach the rest. It
-scrolls now.
-
-### It can write the first draft
-
-The reply box has a draft button. The on device model writes a short answer to
-the message you are replying to, which you then edit and send yourself. It is
-told not to promise a date, a figure, or anything else the message does not
-contain, and to say so plainly where the answer depends on something it cannot
-know. Nothing is ever sent without pressing send.
+A reply button on a receipt is noise. It now appears only on messages sorted as
+needing you or wanting an answer. Anything filed as information or marketing
+offers only mark as read, with reply still available from the right click menu
+for the times the sorting is wrong.
 
 ### Install
 

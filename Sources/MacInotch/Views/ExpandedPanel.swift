@@ -548,6 +548,11 @@ struct ExpandedPanel: View {
                          }
                      })
                 .contextMenu {
+                    Button("Reply anyway") {
+                        mail.beginReply(to: message.id)
+                        state.pinned = true
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
                     Button("Mark as read") { mail.markRead(message.id) }
                     Button("Open in Mail") { mail.openInMail(message.id) }
                 }
@@ -562,14 +567,16 @@ struct ExpandedPanel: View {
 
             if mail.replyingTo != message.id {
                 HStack(spacing: 10) {
-                    Button("Reply") {
-                        mail.beginReply(to: message.id)
-                        state.pinned = true
-                        NSApp.activate(ignoringOtherApps: true)
+                    if message.wantsAnswer {
+                        Button("Reply") {
+                            mail.beginReply(to: message.id)
+                            state.pinned = true
+                            NSApp.activate(ignoringOtherApps: true)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(t.accent)
                     }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(t.accent)
 
                     Button("Mark read") { mail.markRead(message.id) }
                         .buttonStyle(.plain)

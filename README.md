@@ -398,6 +398,12 @@ Mail has to be running.
 mail leaves the device and no key is needed. The framework is absent from older
 SDKs, so it is compiled behind `canImport` and falls back to the opening lines.
 
+**A keychain item is read once, not per request.** Every read can raise a
+prompt, so reading a token inside a request helper turns one sign in into a
+prompt per API call. It is fetched once per run and held. The prompt itself
+follows the code signature, and an ad-hoc signature changes with every build,
+so each version is a new application to macOS.
+
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.
 
