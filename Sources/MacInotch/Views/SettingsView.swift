@@ -433,6 +433,27 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Mail") {
+                Toggle("Mail tab in the panel", isOn: $prefs.d.showMail)
+                Toggle("Notify when new mail arrives", isOn: $prefs.d.notifyOnMail)
+                    .disabled(!prefs.d.showMail)
+                Toggle("Summarise each message", isOn: $prefs.d.mailSummaries)
+                    .disabled(!prefs.d.showMail)
+                Stepper("Show at most \(prefs.d.mailLimit)",
+                        value: $prefs.d.mailLimit, in: 3...30)
+                    .disabled(!prefs.d.showMail)
+                Text(Summarizer.onDeviceAvailable
+                     ? "Summaries are written by the model built into macOS. Nothing "
+                       + "leaves the machine and no account or key is needed."
+                     : "Apple Intelligence is not available here, so summaries fall "
+                       + "back to the opening lines of the message.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Mail is read through Mail itself, so it needs your account added "
+                     + "in Internet Accounts and Mail running. MacInotch never sees a "
+                     + "password and holds no mail credentials of its own.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Keep awake") {
                 Picker("Coffee cup lasts", selection: $prefs.d.caffeineMinutes) {
                     ForEach(CaffeineService.durations, id: \.minutes) { option in

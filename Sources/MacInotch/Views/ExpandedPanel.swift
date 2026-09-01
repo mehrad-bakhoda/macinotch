@@ -34,6 +34,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var meeting = MeetingMode.shared
     @ObservedObject private var github = GitHubService.shared
     @ObservedObject private var caffeine = CaffeineService.shared
+    @ObservedObject private var mail = MailService.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -65,6 +66,8 @@ struct ExpandedPanel: View {
                     accountsTab
                 case .github:
                     githubTab
+                case .mail:
+                    mailTab
                 case .notes:
                     notesTab
                 }
@@ -394,10 +397,185 @@ struct ExpandedPanel: View {
             case .sessions: return p.showSessions
             case .accounts: return p.showAccounts
             case .github:   return p.showGitHub && github.snapshot.connected
+            case .mail:     return p.showMail
             case .notes:    return p.showNotes
             default:        return true
             }
         }
+    }
+
+    private var mailTab: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                sectionLabel("UNREAD TODAY", action: nil)
+                Spacer()
+                if mail.state == .ready {
+                    Text("\(mail.messages.count)")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(t.tertiary)
+                }
+            }
+
+            switch mail.state {
+            case .notRunning:
+                mailNotice("Mail is not open",
+                           "MacInotch reads what Mail already has, so Mail needs to "
+                           + "be running.",
+                           action: ("Open Mail", { mail.openMail() }))
+            case .noAccounts:
+                mailNotice("No mail account",
+                           "Add your Google or other account to Mail in Internet "
+                           + "Accounts, the same place calendars come from.",
+                           action: ("Add an account", { mail.openAccountSettings() }))
+            case .denied:
+                mailNotice("Mail would not answer",
+                           "Allow MacInotch to control Mail under Privacy and "
+                           + "Security, Automation.",
+                           action: nil)
+            case .ready:
+                if mail.messages.isEmpty {
+                    Text("Nothing unread today")
+                        .font(.system(size: 11))
+                        .foregroundStyle(t.tertiary)
+                } else {
+                    ForEach(mail.messages) { message in
+                        mailRow(message)
+                        if mail.replyingTo == message.id { replyBox(message) }
+                    }
+                }
+            }
+
+            if !mail.lastError.isEmpty {
+                Text(mail.lastError)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.red)
+            }
+        }
+    }
+
+    private func mailNotice(_ title: String, _ body: String,
+                            action: (String, () -> Void)?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(t.secondary)
+            Text(body)
+                .font(.system(size: 10.5))
+                .foregroundStyle(t.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let action {
+                Button(action.0) { action.1() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(t.accent)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func mailRow(_ message: MailMessage) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            PanelRow(id: "mail-\(message.id)",
+                     title: message.sender,
+                     subtitle: message.subject,
+                     theme: t,
+                     onTap: { mail.openInMail(message.id) },
+                     leading: {
+                         ZStack {
+                             Circle()
+                                 .fill(message.important
+                                       ? t.orange.opacity(0.22) : t.wellFill)
+                             Text(message.initials)
+                                 .font(.system(size: 9.5, weight: .bold))
+                                 .foregroundStyle(message.important ? t.orange
+                                                                    : t.secondary)
+                         }
+                         .frame(width: 26, height: 26)
+                     },
+                     trailing: {
+                         Text(message.ago)
+                             .font(.system(size: 9))
+                             .foregroundStyle(t.tertiary)
+                     })
+                .contextMenu {
+                    Button("Mark as read") { mail.markRead(message.id) }
+                    Button("Open in Mail") { mail.openInMail(message.id) }
+                }
+
+            if !message.summary.isEmpty {
+                Text(message.summary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 47)
+            }
+
+            if mail.replyingTo != message.id {
+                HStack(spacing: 10) {
+                    Button("Reply") {
+                        mail.beginReply(to: message.id)
+                        state.pinned = true
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(t.accent)
+
+                    Button("Mark read") { mail.markRead(message.id) }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10))
+                        .foregroundStyle(t.tertiary)
+                }
+                .padding(.leading, 47)
+            }
+        }
+    }
+
+    private func replyBox(_ message: MailMessage) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Replying to \(message.sender)")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(t.secondary)
+
+            TextEditor(text: $mail.draft)
+                .font(.system(size: 11))
+                .scrollContentBackground(.hidden)
+                .frame(height: 62)
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 8).fill(t.wellFill))
+
+            HStack(spacing: 8) {
+                Button {
+                    mail.sendReply()
+                } label: {
+                    Text(mail.sending ? "Sending" : "Send")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(t.isDark ? Color.black : Color.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(t.accent))
+                }
+                .buttonStyle(.plain)
+                .disabled(mail.draft.trimmingCharacters(in: .whitespaces).isEmpty
+                          || mail.sending)
+
+                Button("Cancel") {
+                    mail.cancelReply()
+                    state.pinned = false
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 10))
+                .foregroundStyle(t.tertiary)
+
+                Spacer()
+                Text("Sends through Mail")
+                    .font(.system(size: 9))
+                    .foregroundStyle(t.tertiary)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 11).fill(t.control))
+        .padding(.leading, 40)
     }
 
     private var githubTab: some View {

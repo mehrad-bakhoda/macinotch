@@ -77,6 +77,12 @@ struct PrefsData: Codable, Equatable {
     var calendarsExcluded: [String] = []
     var caffeineMinutes      = 60.0
     var caffeineKeepsDisplayOn = true
+    var showMail             = true
+    var notifyOnMail         = true
+    var mailSummaries        = true
+    var mailWindowHours      = 24.0
+    var mailLimit            = 12
+    var mailHasAccounts      = false
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

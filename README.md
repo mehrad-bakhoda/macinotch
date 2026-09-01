@@ -62,6 +62,8 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - **Dock**, a file shelf and clipboard history. Drag files onto the notch to
   park them, then drag them straight back out. Named piles keep work separate.
   New screenshots land here automatically.
+- **Mail**, unread messages from the last day with a one sentence summary
+  written on device, and a reply box.
 - **GitHub**, today's pushes, pull requests and reviews waiting on you, a
   contribution graph and any failing workflows.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
@@ -266,6 +268,7 @@ setup guide walks through each one.
 | Calendar | Calendar access |
 | Notification mirror, Focus awareness | Full Disk Access |
 | Reminders | Reminders access |
+| Mail | An account in Mail, and Automation access to it |
 | Fan control | An administrator password once, to install the helper |
 | Saved accounts | Keychain access, granted on first use |
 | Everything else | Nothing |
@@ -382,6 +385,16 @@ launch is enough to hang the application outright: if macOS decides to ask
 about keychain access, the prompt cannot be presented while the app is still
 starting, and the launch never completes. Keychain work belongs off the main
 thread.
+
+**Mail is read through Mail, not from a server.** Talking to Gmail directly
+would mean an OAuth client or an app password, and holding either is worse than
+not having the feature. Mail already holds the account, so the messages are read
+from it over Apple events and replies are sent the same way. The cost is that
+Mail has to be running.
+
+**Summaries run on the machine.** The model built into macOS writes them, so no
+mail leaves the device and no key is needed. The framework is absent from older
+SDKs, so it is compiled behind `canImport` and falls back to the opening lines.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.

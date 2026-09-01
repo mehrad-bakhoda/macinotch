@@ -1,30 +1,26 @@
-A coffee cup that keeps the Mac awake, and a launch hang worth fixing.
+Unread mail in the notch, summarised on device, with a reply box.
 
-### The cup
+### Mail
 
-A coffee cup sits in the quick actions row. Clicking it fills the cup, steam
-rises off it, and the Mac stops going to sleep. Clicking again empties it and
-normal sleep resumes.
+A Mail tab lists what is unread from the last day, newest first, with the
+sender, the subject and how long ago it landed. Flagged messages are marked.
+New mail raises a notification, flagged mail more insistently.
 
-The cup drains as the time runs down, so how full it is tells you how long is
-left. Right click for a different length, from fifteen minutes to four hours,
-or until you turn it off, in which case the cup simply stays full. Settings
-chooses the default length and whether the display is kept on as well or only
-the machine.
+Each message carries a one sentence summary written by the language model
+built into macOS. It runs on the machine, so no mail is sent anywhere, no
+account is involved and no key is needed. Where Apple Intelligence is not
+available the summary falls back to the opening lines of the message.
 
-Sleep is held through a power assertion, the same mechanism caffeinate uses,
-which is released the moment it expires, is turned off, or the app quits.
+Replies are written in the panel and sent through Mail. Nothing is ever sent
+without pressing send.
 
-### The app could hang at launch
+### How it reads your mail
 
-Reading the saved GitHub token touched the keychain on the main thread while
-the application was still starting. When macOS decided to ask about keychain
-access, which it does whenever the signature changes, the prompt could not be
-shown yet and the launch never finished. The notch appeared to start but
-nothing updated, because nothing after that point ever ran.
-
-Keychain reads now happen off the main thread. This one was there before the
-cup and would have kept happening after updates.
+Through Mail itself, so your accounts stay where macOS keeps them and this app
+holds no mail credentials, no password and no token of its own. It needs the
+account added in Internet Accounts, the same place calendars come from, and
+Mail running, since it reads what Mail already has rather than talking to a
+mail server. The tab says which of those is missing rather than sitting empty.
 
 ### Install
 

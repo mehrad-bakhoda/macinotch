@@ -180,6 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         AlertService.shared.start()
         MeetingMode.shared.start()
         GitHubService.shared.start()
+        MailService.shared.start()
 
         let gateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
             [weak self] _ in
