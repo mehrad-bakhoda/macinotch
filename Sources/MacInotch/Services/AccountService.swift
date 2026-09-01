@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Security
 
@@ -34,6 +35,20 @@ enum AccountProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .codex: return nil
         case .claude: return URL(fileURLWithPath: NSHomeDirectory() + "/.claude.json")
+        }
+    }
+
+    var hostBundleIds: [String] {
+        switch self {
+        case .codex: return ["com.openai.codex", "com.openai.chat"]
+        case .claude: return ["com.anthropic.claudefordesktop"]
+        }
+    }
+
+    var processName: String {
+        switch self {
+        case .codex: return "codex"
+        case .claude: return "claude"
         }
     }
 
@@ -83,6 +98,7 @@ enum AccountError: LocalizedError {
     case writeFailed
     case providerRunning(AccountProvider)
     case damaged
+    case stillRunning(AccountProvider)
 
     var errorDescription: String? {
         switch self {
@@ -97,6 +113,8 @@ enum AccountError: LocalizedError {
             return "That account is no longer in the keychain."
         case .writeFailed:
             return "The session file could not be replaced."
+        case .stillRunning(let provider):
+            return "\(provider.title) would not quit, so nothing was changed."
         case .damaged:
             return "The saved session is not usable. Sign in again and save it afresh."
         case .providerRunning(let provider):
@@ -121,6 +139,8 @@ final class AccountService: ObservableObject {
     @Published private(set) var activeId: [AccountProvider: String] = [:]
     @Published private(set) var currentEmail: [AccountProvider: String] = [:]
     @Published var lastError: String = ""
+    @Published var pendingSwitch: String?
+    @Published var busy: Bool = false
 
     private let service = "io.macinotch.accounts"
     private let legacyService = "io.macinotch.codex-accounts"
@@ -308,10 +328,71 @@ final class AccountService: ObservableObject {
         return !refresh.isEmpty
     }
 
+    static func hostApps(_ provider: AccountProvider) -> [NSRunningApplication] {
+        NSWorkspace.shared.runningApplications.filter {
+            guard let id = $0.bundleIdentifier else { return false }
+            return provider.hostBundleIds.contains(id)
+        }
+    }
+
+    func requestActivate(_ id: String) {
+        guard let account = accounts.first(where: { $0.id == id }) else { return }
+        lastError = ""
+        if Self.isRunning(account.provider) {
+            pendingSwitch = id
+        } else {
+            attemptActivate(id)
+        }
+    }
+
+    func cancelPending() { pendingSwitch = nil }
+
+    func confirmPending() {
+        guard let id = pendingSwitch else { return }
+        pendingSwitch = nil
+        Task { await restartAndActivate(id) }
+    }
+
+    func restartAndActivate(_ id: String) async {
+        guard let account = accounts.first(where: { $0.id == id }) else { return }
+        let provider = account.provider
+
+        busy = true
+        lastError = ""
+        defer { busy = false }
+
+        let bundleIds = Self.hostApps(provider).compactMap(\.bundleIdentifier)
+        for app in Self.hostApps(provider) { app.terminate() }
+
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline && Self.isRunning(provider) {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
+        if Self.isRunning(provider) {
+            for app in Self.hostApps(provider) { app.forceTerminate() }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+        }
+
+        if Self.isRunning(provider) {
+            lastError = AccountError.stillRunning(provider).localizedDescription
+        } else {
+            do { try activate(id) }
+            catch { lastError = error.localizedDescription }
+        }
+
+        for bundle in bundleIds {
+            guard let url = NSWorkspace.shared
+                .urlForApplication(withBundleIdentifier: bundle) else { continue }
+            _ = try? await NSWorkspace.shared.openApplication(
+                at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
     static func isRunning(_ provider: AccountProvider) -> Bool {
         switch provider {
-        case .codex: return PresenceService.processExists(named: "codex")
-        case .claude: return PresenceService.processExists(named: "claude")
+        case .codex, .claude:
+            if !hostApps(provider).isEmpty { return true }
+            return PresenceService.processExists(named: provider.processName)
         }
     }
 

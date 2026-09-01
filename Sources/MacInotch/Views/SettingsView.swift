@@ -929,6 +929,17 @@ struct SettingsView: View {
             ForEach(AccountProvider.allCases) { provider in
                 providerSection(provider)
             }
+            if switcher.pendingSwitch != nil {
+                HStack(spacing: 8) {
+                    Text("The tool is open and would write its old session back. "
+                         + "Close it for the switch to hold.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button("Quit and switch") { switcher.confirmPending() }
+                        .controlSize(.small)
+                    Button("Cancel") { switcher.cancelPending() }
+                        .controlSize(.small)
+                }
+            }
             if !switcher.lastError.isEmpty {
                 Text(switcher.lastError).font(.caption).foregroundStyle(.red)
             }
@@ -974,7 +985,7 @@ struct SettingsView: View {
             if active {
                 Text("in use").font(.caption2).foregroundStyle(.secondary)
             } else {
-                Button("Use") { act { try switcher.activate(account.id) } }
+                Button(switcher.busy ? "Working" : "Use") { switcher.requestActivate(account.id) }
                     .buttonStyle(.bordered).controlSize(.small)
             }
             Button { switcher.forget(account.id) } label: { Image(systemName: "trash") }

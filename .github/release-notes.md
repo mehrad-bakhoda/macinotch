@@ -1,42 +1,25 @@
-Real usage figures, real session names, and saved Codex accounts.
+Switching accounts now closes the tool and reopens it for you.
 
-### Usage now comes from the source
+### The switch holds now
 
-Codex reports its own rate limits, so MacInotch reads them instead of
-guessing: the five hour and weekly windows, the percentage used and the real
-reset time. Claude Code publishes no quota anywhere on disk, so its figure is
-now shown honestly as a local token tally rather than dressed up as a limit.
+Codex keeps its session in memory and writes it back when it exits, so
+swapping the file underneath a running Codex achieved nothing: quitting put
+the old session straight back, and because refresh tokens rotate, the round
+trip could leave you at a login screen.
 
-This also removes a wrong notification. The old code inferred a window from
-message timestamps and moved its start whenever it saw activity after a gap,
-which announced resets that had never happened. A reset is now only announced
-when the provider says one occurred.
+Choosing another account now says the tool is open and offers to quit it,
+switch, and reopen it. The outgoing session is saved after the tool has fully
+exited, so what gets stored is the last thing it wrote rather than a copy that
+is already out of date.
 
-### Sessions
+### Failures say what went wrong
 
-Names come from the sources themselves, so Codex sessions are no longer all
-called "Codex". A session counts as live when its process is actually running,
-not when its transcript happens to be recent, and the list can be narrowed to
-running sessions only.
+Switching used to discard its errors, so a real failure looked exactly like a
+dead button. Both the Accounts tab and Settings now show the reason, and a
+saved session is checked before it replaces the live one, so a damaged copy is
+reported instead of being discovered at a login prompt.
 
-### Saved accounts for Codex and Claude Code
-
-Sign in with the codex or claude CLI as usual, then save that session under a
-name. Save as many as you like and switch between them from the new Accounts
-tab without signing in again.
-
-Claude Code only appears once it keeps a credential file of its own. If you
-signed in through the Claude desktop app, the session lives inside that app's
-encrypted store rather than in a file, and there is nothing for MacInotch to
-save. The tab says so instead of pretending otherwise.
-
-Sessions are held in the login keychain, marked accessible only when unlocked
-and only on this device, so they are never synced and never written to disk in
-the clear. MacInotch never sees your password and runs no login flow of its
-own. Switching replaces the session file through an atomic rename at owner only
-permissions, and saves the outgoing session first so a switch cannot strand an
-account. The credential itself is treated as opaque bytes, so nothing depends
-on the shape of a format that is not ours.
+Sessions that have sat unused long enough to need a fresh sign in are marked.
 
 ### Install
 

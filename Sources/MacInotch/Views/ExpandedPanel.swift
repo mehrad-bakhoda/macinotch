@@ -129,6 +129,15 @@ struct ExpandedPanel: View {
                 providerBlock(provider)
             }
 
+            if switcher.busy {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Closing, switching and reopening")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(t.secondary)
+                }
+            }
+
             if !switcher.lastError.isEmpty {
                 Text(switcher.lastError)
                     .font(.system(size: 10))
@@ -170,8 +179,50 @@ struct ExpandedPanel: View {
 
             ForEach(saved) { account in
                 accountRow(account, isActive: active == account.id)
+                if switcher.pendingSwitch == account.id {
+                    switchPrompt(provider)
+                }
             }
         }
+    }
+
+    private func switchPrompt(_ provider: AccountProvider) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(provider.title) is open and would write its old session back "
+                 + "over the new one. It has to be closed for the switch to hold.")
+                .font(.system(size: 10.5))
+                .foregroundStyle(t.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 7) {
+                Button {
+                    SoundKit.tap()
+                    switcher.confirmPending()
+                } label: {
+                    Text("Quit, switch and reopen")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(t.isDark ? Color.black : Color.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(t.accent))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    switcher.cancelPending()
+                } label: {
+                    Text("Cancel")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(t.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(t.control))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 4)
     }
 
     private func accountRow(_ account: SavedAccount, isActive: Bool) -> some View {
@@ -180,7 +231,7 @@ struct ExpandedPanel: View {
                  subtitle: isActive ? "Signed in now"
                      : account.subtitle(showEmail: account.label != account.email),
                  theme: t,
-                 onTap: isActive ? nil : { switcher.attemptActivate(account.id) },
+                 onTap: isActive ? nil : { switcher.requestActivate(account.id) },
                  leading: {
                      ZStack(alignment: .bottomTrailing) {
                          SourceIcon(source: account.provider.source, kind: .info,

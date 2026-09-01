@@ -49,7 +49,9 @@ on each side; the notch resizes to fit and hides anything that has no data.
 - Pomodoro and plain timers, drawn as a ring tracing the notch outline
 - Menu bar item hiding, with no Accessibility permission required
 - Several Codex and Claude Code accounts saved in the keychain, switched from the
-  Accounts tab without signing in again
+  Accounts tab without signing in again. Switching closes the tool and reopens
+  it, because it writes its session back on exit and would otherwise undo the
+  swap
 - Bluetooth device battery, audio output switching
 - Notification history, searchable and persistent
 - Light and dark themes, Liquid Glass on macOS 26+, six opening animations
