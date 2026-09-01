@@ -1,36 +1,44 @@
-Limits that warn you before you hit them, and an account that can take over.
+The notch now watches the machine, your calendar, and your repositories.
 
-### It tells you before you run out
+### It tells you when something is wrong
 
-Codex writes a rate limit record on every turn, so there is a real series of
-measurements sitting in the rollout files rather than a single number. That is
-enough to know how fast you are burning through a window, so the usage row now
-reads "5h limit, resets in 3h 12m, at this pace full around 16:40".
+The vitals were already sampled every few seconds and thrown away. Now a disk
+filling up, a process pinning a core for two minutes, thermal throttling, and
+a failing battery each warn once, and rearm only after the condition clears.
 
-A chime and a notification arrive at 80% and 95% of the window, once each per
-window, with the reset time and the pace.
+Network state is new. The path monitor reports whether a connection is metered
+or constrained, which is what you want to know before starting a large
+download, and connected VPNs are read from the system configuration.
 
-### The warning can hand over to another account
+### Meetings
 
-If another saved account has room, the warning offers to switch to it and says
-what it knows: "rinetech is 12% as of 2h ago". Tapping it opens the Accounts
-tab with the switch ready to confirm, so quitting the tool is still your
-decision rather than something that happens mid task.
+The calendar now lists today's events and your open reminders, which needs the
+separate reminders permission. When an event with a join link starts, the
+notch offers to join it or to go quiet for its duration.
 
-An account whose window has passed its reset time is reported as reset, since
-that much can be worked out without being signed in to it.
+Meeting mode mutes system audio and holds notifications until the event ends,
+then puts both back. It leaves audio alone if it was already muted, so it
+cannot unmute something you silenced yourself. It is offered once per event
+rather than imposed.
 
-### Usage is now attributed per account
+### GitHub
 
-Each saved account carries its own last known percentage and reset time, so
-the figures no longer blend two accounts together after a switch.
+Connect a personal access token and the notch shows today's pushes, pull
+requests you opened, and reviews waiting on you. A failing workflow raises a
+notification with a link to the run.
 
-### Resume a session
+The token goes straight into your keychain, marked for this device only. It is
+never written to disk, never leaves the machine except to api.github.com, and
+never appears on the local endpoint.
 
-Clicking a session in the Sessions tab reopens that conversation in a terminal
-at the project directory, rather than only revealing the transcript file. It
-uses the tool's own resume command, and falls back to revealing the file when
-the tool cannot be found.
+### Focus and recording
+
+Focus state was already read from the system but only shown as a dot. It is
+now a row naming the mode, and tapping it runs a Shortcut you choose, because
+macOS lets you observe a Focus but not set one.
+
+Screen recordings already landed in the shelf once they existed. Starting one
+is now a button in the Dock tab that shows elapsed time and files the result.
 
 ### Install
 

@@ -31,6 +31,9 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Media** | Spotify and Apple Music with artwork, scrubbing, transport and volume |
 | **Calendar** | Next event with a countdown and a join button for Zoom, Meet, Teams, Webex, Whereby, Around and Jitsi |
 | **AI usage** | Codex limits as Codex itself reports them, five hour and weekly, with the pace you are burning them and when you will run out. Warns at 80% and 95%, and offers another saved account when one has room. Claude Code publishes no quota, so it shows a local token tally instead |
+| **Meetings** | Today's events and open reminders, with a join button and an offer to mute audio and hold notifications for the duration |
+| **GitHub** | Today's pushes, pull requests opened and reviews waiting on you, with a notification when a workflow fails |
+| **Network** | Wi-Fi, VPN, and whether the connection is metered before you start a large download |
 | **Activity** | Recent notifications with optional action buttons |
 
 ### Tabs
@@ -54,6 +57,9 @@ on each side; the notch resizes to fit and hides anything that has no data.
   it, because it writes its session back on exit and would otherwise undo the
   swap
 - Bluetooth device battery, audio output switching
+- Warnings for a filling disk, a runaway process, throttling and battery health
+- Screen recording started from the shelf, with the file parked there when done
+- Focus state in the panel, toggled through a Shortcut you choose
 - Notification history, searchable and persistent
 - Light and dark themes, Liquid Glass on macOS 26+, six opening animations
 
@@ -233,6 +239,7 @@ setup guide walks through each one.
 | Weather | Location, or manual coordinates in Settings |
 | Calendar | Calendar access |
 | Notification mirror, Focus awareness | Full Disk Access |
+| Reminders | Reminders access |
 | Fan control | An administrator password once, to install the helper |
 | Saved accounts | Keychain access, granted on first use |
 | Everything else | Nothing |
@@ -322,6 +329,15 @@ field in `~/.claude/sessions`.
 
 **A recently written transcript does not mean a running session.** Liveness is
 a live pid for Claude Code and a running `codex` process for Codex.
+
+**macOS lets you observe a Focus but not set one.** There is no public
+interface for changing Focus, so toggling runs a Shortcut you nominate. Reading
+the current state stays exact, since that comes from the assertion store.
+
+**Metered connections are a network path property, not a Wi-Fi name.** Personal
+hotspots cannot be recognised reliably by SSID, but the path monitor reports
+`isExpensive` and `isConstrained`, which is the thing actually worth acting on.
+Wi-Fi names need Location, so the label falls back to the interface without it.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.

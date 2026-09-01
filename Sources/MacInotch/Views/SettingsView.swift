@@ -11,6 +11,7 @@ final class SettingsNav: ObservableObject {
     @Published var historySource: NotchSource? = nil
     @Published var newAccountLabel: String = ""
     @Published var shortcutNames: [String] = []
+    @Published var githubToken: String = ""
 }
 
 struct SettingsView: View {
@@ -24,6 +25,7 @@ struct SettingsView: View {
     @ObservedObject private var calendar = CalendarService.shared
     @ObservedObject private var weather = WeatherService.shared
     @ObservedObject private var themes = ThemeManager.shared
+    @ObservedObject private var github = GitHubService.shared
     @ObservedObject private var switcher = AccountService.shared
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -244,6 +246,40 @@ struct SettingsView: View {
                      + "Claude Code publishes no quota anywhere on disk, so its figure "
                      + "is a local token tally over the window length above.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("GitHub") {
+                Toggle("GitHub row in the panel", isOn: $prefs.d.showGitHub)
+                Toggle("Alert when a workflow fails", isOn: $prefs.d.alertWorkflowFailure)
+
+                if github.snapshot.connected {
+                    LabeledContent("Signed in as", value: github.snapshot.login)
+                    Text(github.snapshot.summary)
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Refresh now") { Task { await github.refresh() } }
+                            .controlSize(.small)
+                        Button("Disconnect") { github.disconnect() }
+                            .controlSize(.small)
+                    }
+                } else {
+                    SecureField("Personal access token", text: $nav.githubToken)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Connect") {
+                        github.connect(token: nav.githubToken)
+                        nav.githubToken = ""
+                    }
+                    .controlSize(.small)
+                    Text("Create a fine grained token with read access to the "
+                         + "repositories you care about, plus Actions read. The token "
+                         + "goes straight into your keychain, marked for this device "
+                         + "only, and is never written to disk or sent anywhere except "
+                         + "api.github.com.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if !github.lastError.isEmpty {
+                    Text(github.lastError).font(.caption).foregroundStyle(.red)
+                }
             }
 
             Section("Meetings") {

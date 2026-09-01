@@ -166,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NetworkService.shared.start()
         AlertService.shared.start()
         MeetingMode.shared.start()
+        GitHubService.shared.start()
 
         let gateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
             [weak self] _ in

@@ -27,6 +27,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var capture = CaptureService.shared
     @ObservedObject private var focusState = FocusWatcher.shared
     @ObservedObject private var meeting = MeetingMode.shared
+    @ObservedObject private var github = GitHubService.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -1207,6 +1208,51 @@ struct ExpandedPanel: View {
                     out.append(RowSpec(id: "usage-codex",
                                        view: AnyView(tallyRow(.chatgpt, tally))))
                 }
+            }
+        }
+
+        if p.showGitHub && github.snapshot.connected {
+            let snap = github.snapshot
+            out.append(RowSpec(id: "github", view: AnyView(
+                PanelRow(id: "github", title: "GitHub today",
+                         subtitle: snap.summary, theme: t,
+                         onTap: {
+                             if let url = URL(string: "https://github.com/\(snap.login)") {
+                                 NSWorkspace.shared.open(url)
+                             }
+                         },
+                         leading: {
+                             IconBadge(symbol: "chevron.left.forwardslash.chevron.right",
+                                       tint: snap.failures.isEmpty ? t.teal : t.red,
+                                       theme: t)
+                         },
+                         trailing: {
+                             if !snap.failures.isEmpty {
+                                 Text("\(snap.failures.count) failing")
+                                     .font(.system(size: 9, weight: .bold))
+                                     .foregroundStyle(t.isDark ? Color.black : Color.white)
+                                     .padding(.horizontal, 5)
+                                     .padding(.vertical, 1.5)
+                                     .background(Capsule().fill(t.red))
+                             }
+                         })
+            )))
+
+            for failure in snap.failures.prefix(3) {
+                out.append(RowSpec(id: "gh-\(failure.id)", view: AnyView(
+                    PanelRow(id: "gh-\(failure.id)", title: failure.workflow,
+                             subtitle: "\(failure.repo) · \(failure.ago)", theme: t,
+                             onTap: {
+                                 if let url = URL(string: failure.url) {
+                                     NSWorkspace.shared.open(url)
+                                 }
+                             },
+                             leading: {
+                                 IconBadge(symbol: "xmark.octagon.fill",
+                                           tint: t.red, theme: t)
+                             },
+                             trailing: { EmptyView() })
+                )))
             }
         }
 

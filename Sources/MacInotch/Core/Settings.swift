@@ -69,6 +69,8 @@ struct PrefsData: Codable, Equatable {
     var meetingMutesAudio    = true
     var meetingSilencesNotch = true
     var showReminders        = true
+    var alertWorkflowFailure = true
+    var showGitHub           = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true
