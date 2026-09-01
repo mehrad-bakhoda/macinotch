@@ -240,24 +240,48 @@ struct ExpandedPanel: View {
                     .font(.system(size: 9.5))
                     .foregroundStyle(t.tertiary)
             } else {
-                Text("Sign in needs a one time setup")
+                Text("Paste a GitHub token")
                     .font(.system(size: 11.5, weight: .semibold))
                     .foregroundStyle(t.primary)
-                Text("Register a GitHub OAuth app once and paste its client id in "
-                     + "Settings. After that this button signs in with one click, "
-                     + "for you and anyone else running MacInotch.")
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(t.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 6) {
+                    SecureField("github_pat_", text: $nav.githubToken)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11, design: .monospaced))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(t.wellFill))
+
+                    Button {
+                        github.connect(token: nav.githubToken)
+                        nav.githubToken = ""
+                        nav.connectingGitHub = false
+                        state.pinned = false
+                    } label: {
+                        Text("Connect")
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(t.isDark ? Color.black : Color.white)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(t.accent))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(nav.githubToken.isEmpty)
+                }
+
                 HStack(spacing: 8) {
-                    Button("Open Settings") {
-                        SettingsNav.shared.tab = .general
-                        SettingsWindow.shared.show()
+                    Button("Create a token") {
+                        if let url = URL(string:
+                            "https://github.com/settings/personal-access-tokens/new") {
+                            NSWorkspace.shared.open(url)
+                        }
                     }
                     .buttonStyle(.plain)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(t.accent)
+
                     Button("Cancel") {
+                        nav.githubToken = ""
                         nav.connectingGitHub = false
                         state.pinned = false
                     }
@@ -265,6 +289,13 @@ struct ExpandedPanel: View {
                     .font(.system(size: 10))
                     .foregroundStyle(t.tertiary)
                 }
+
+                Text("Read only Metadata, Actions, Contents and Pull requests. Kept "
+                     + "in your keychain for this device only and sent nowhere except "
+                     + "api.github.com.")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(t.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if !github.lastError.isEmpty {

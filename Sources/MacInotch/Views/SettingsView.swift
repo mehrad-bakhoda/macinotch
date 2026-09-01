@@ -285,8 +285,31 @@ struct SettingsView: View {
                         }
                     }
 
-                    DisclosureGroup("One time setup, or use a token instead") {
+                    DisclosureGroup("Token, or one click sign in setup") {
                         VStack(alignment: .leading, spacing: 8) {
+                            Text("Paste a fine grained token with read only access to "
+                                 + "Metadata, Actions, Contents and Pull requests. "
+                                 + "Select every repository you want workflow alerts "
+                                 + "for.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                SecureField("Personal access token",
+                                            text: $nav.githubToken)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Connect") {
+                                    github.connect(token: nav.githubToken)
+                                    nav.githubToken = ""
+                                }
+                                .controlSize(.small)
+                            }
+                            Button("Create a token") {
+                                if let url = URL(string:
+                                    "https://github.com/settings/personal-access-tokens/new") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                            .controlSize(.small)
+                            Divider()
                             Text("For one click sign in, register an OAuth app on "
                                  + "GitHub with device flow enabled and paste its "
                                  + "client id here. It is a public identifier, not a "
@@ -300,20 +323,6 @@ struct SettingsView: View {
                                         "https://github.com/settings/applications/new") {
                                         NSWorkspace.shared.open(url)
                                     }
-                                }
-                                .controlSize(.small)
-                            }
-                            Divider()
-                            Text("Or paste a personal access token, which needs no "
-                                 + "setup but has to be created by hand.")
-                                .font(.caption).foregroundStyle(.secondary)
-                            HStack {
-                                SecureField("Personal access token",
-                                            text: $nav.githubToken)
-                                    .textFieldStyle(.roundedBorder)
-                                Button("Connect") {
-                                    github.connect(token: nav.githubToken)
-                                    nav.githubToken = ""
                                 }
                                 .controlSize(.small)
                             }
