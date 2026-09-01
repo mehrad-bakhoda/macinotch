@@ -81,6 +81,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                     return #"{"ok":true}"#
+                },
+                onTab: { name in
+                    Task { @MainActor in
+                        if let tab = PanelTab(rawValue: name) {
+                            NotchState.shared.panelTab = tab
+                            NotchState.shared.pinned = true
+                            NotchState.shared.forceExpand()
+                        }
+                    }
+                    return #"{"ok":true}"#
                 }
             )
             s.start()
@@ -181,6 +191,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MeetingMode.shared.start()
         GitHubService.shared.start()
         MailService.shared.start()
+        if DemoData.enabled {
+            usage.stop()
+            sessionService.stop()
+            GitHubService.shared.stop()
+            MailService.shared.stop()
+            AccountService.shared.stop()
+        }
+        DemoData.apply()
 
         let gateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
             [weak self] _ in
@@ -333,6 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 "reminders": CalendarService.shared.remindersAuthorized
                     ? "granted" : "not granted",
             ],
+            "panelWindow": NotchWindowController.currentWindowNumber,
             "caffeine": ["active": CaffeineService.shared.active,
                          "detail": CaffeineService.shared.detail],
             "network": {

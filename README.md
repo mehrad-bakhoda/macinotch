@@ -404,6 +404,17 @@ prompt per API call. It is fetched once per run and held. The prompt itself
 follows the code signature, and an ad-hoc signature changes with every build,
 so each version is a new application to macOS.
 
+**Waiting for an application to quit is not the same as waiting for a name to
+disappear.** The Codex host spawns fresh helper processes as it shuts down and
+restarts, so a repeated check for anything named `codex` never returns false.
+Waiting on the specific process identifiers that were asked to quit is the only
+reading that terminates.
+
+**Screenshots come from a demo mode.** `MACINOTCH_DEMO=1` fills the panel with
+invented mail, accounts and repositories and silences the live pollers so they
+cannot overwrite it, which is what makes it safe to photograph the app for a
+public page.
+
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.
 

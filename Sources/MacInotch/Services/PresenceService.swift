@@ -51,6 +51,29 @@ final class PresenceService {
         if p != state?.presence { state?.presence = p }
     }
 
+    nonisolated static func pids(named name: String) -> [pid_t] {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        var size = 0
+        guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return [] }
+
+        let count = size / MemoryLayout<kinfo_proc>.stride
+        var procs = [kinfo_proc](repeating: kinfo_proc(), count: count + 16)
+        size = procs.count * MemoryLayout<kinfo_proc>.stride
+        guard sysctl(&mib, 4, &procs, &size, nil, 0) == 0 else { return [] }
+
+        let actual = size / MemoryLayout<kinfo_proc>.stride
+        var found: [pid_t] = []
+        for i in 0..<min(actual, procs.count) {
+            var comm = procs[i].kp_proc.p_comm
+            let matches = withUnsafeBytes(of: &comm) { raw -> Bool in
+                guard let base = raw.baseAddress else { return false }
+                return String(cString: base.assumingMemoryBound(to: CChar.self)) == name
+            }
+            if matches { found.append(procs[i].kp_proc.p_pid) }
+        }
+        return found
+    }
+
     nonisolated static func processExists(named name: String) -> Bool {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size = 0

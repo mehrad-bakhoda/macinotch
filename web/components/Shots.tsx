@@ -10,23 +10,47 @@ const SHOTS: Shot[] = [
     file: 'home',
     label: 'Home',
     blurb:
-      'Clock and three calendars, weather, a timer, now playing, vitals with '
-      + 'sparklines and the process behind each spike, plus Claude Code and '
-      + 'Codex usage.',
+      'Clock and three calendars, now playing, vitals with sparklines and the '
+      + 'process behind each spike, AI limits with the pace you are burning '
+      + 'them, and whatever else is worth a glance.',
+  },
+  {
+    file: 'mail',
+    label: 'Mail',
+    blurb:
+      'Unread mail sorted into what needs you now, what wants a reply and what '
+      + 'is only noise, each with a one sentence summary written on the '
+      + 'machine, and a reply box that can draft the answer.',
+  },
+  {
+    file: 'accounts',
+    label: 'Accounts',
+    blurb:
+      'Several Codex and Claude Code sign ins kept in the keychain, each with '
+      + 'its own usage and reset time, swapped with one click and no second '
+      + 'login.',
+  },
+  {
+    file: 'github',
+    label: 'GitHub',
+    blurb:
+      'Pushes, pull requests and reviews waiting on you, a contribution graph, '
+      + 'and any workflow that has failed since this morning.',
   },
   {
     file: 'sessions',
     label: 'Sessions',
     blurb:
-      'Recent Claude Code and Codex sessions per project, with message counts, '
-      + 'token spend and a live dot for whatever is running now.',
+      'Claude Code and Codex sessions under their real names, with token spend '
+      + 'and a live dot driven by whether the process is actually running. '
+      + 'Click one to pick it back up.',
   },
   {
-    file: 'dock-files',
+    file: 'dock',
     label: 'Dock',
     blurb:
-      'A file shelf with named piles, AirDrop and zip in one click, and new '
-      + 'screenshots caught automatically.',
+      'A file shelf with named piles, clipboard history, AirDrop and zip in one '
+      + 'click, and new screenshots and recordings caught automatically.',
   },
   {
     file: 'notes',

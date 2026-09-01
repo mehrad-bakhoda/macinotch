@@ -8,13 +8,17 @@ const BASE = process.env.GITHUB_ACTIONS === 'true' ? '/macinotch' : '';
 
 const CAPABILITIES: [string, string, string][] = [
   ['Vitals', 'CPU, memory, temperature, fans, power, battery, disk, network', 'sparklines, and the process behind each spike'],
-  ['Calendars', 'Gregorian, Shamsi in Farsi, Hijri', 'week number, year progress, Nowruz countdown'],
-  ['AI', 'Claude Code and Codex usage and sessions', 'tokens per window, per project, live indicator'],
-  ['Dock', 'File shelf with named piles, clipboard history', 'AirDrop, zip, automatic screenshot capture'],
+  ['Mail', 'Unread mail, triaged and summarised on device', 'reply, or have the first draft written for you'],
+  ['AI limits', 'Codex limits as Codex reports them, five hour and weekly', 'the pace you are burning them and when they run out'],
+  ['Accounts', 'Several Codex and Claude Code sign ins in the keychain', 'switch without logging in again'],
+  ['GitHub', 'Pushes, pull requests, reviews waiting, failing workflows', 'a contribution graph, and a chime when CI breaks'],
+  ['Dock', 'File shelf with named piles, clipboard history', 'AirDrop, zip, screenshots and recordings caught automatically'],
+  ['Fans', 'Live RPM per fan, and timed boosts through a root helper', 'clamped, deadlined, and reverted above 90 degrees'],
+  ['Keep awake', 'A coffee cup that fills, steams and holds off sleep', 'draining as the time runs down'],
+  ['Calendars', 'Gregorian, Shamsi in Farsi, Hijri, plus events and reminders', 'join links, and a meeting mode that mutes the room'],
   ['Media', 'Spotify and Apple Music', 'artwork, scrubbing, transport, volume'],
+  ['Alerts', 'Disk filling, a process pinning a core, throttling, VPN', 'each fires once and rearms when it clears'],
   ['Notify', 'CLI, HTTP endpoint, URL scheme', 'progress, sticky states, action buttons'],
-  ['Timers', 'Pomodoro and plain timers', 'drawn as a ring tracing the notch outline'],
-  ['System', 'Fan control, menu bar hiding, audio switching', 'device battery, notification mirror'],
 ];
 
 function Section({
@@ -155,6 +159,7 @@ export default function Home() {
             {[
               ['Usage limits', 'Codex limits exactly as Codex reports them, five hour and weekly, with a chime when one resets. Claude Code publishes no quota, so it shows a local token tally.'],
               ['Session browser', 'Recent sessions per project, message counts, token spend, and a live dot for whatever is running now.'],
+              ['Several accounts', 'Save more than one Codex or Claude Code sign in, each keeping its own usage and reset time, and swap between them in a click. The one you are not using tells you when its window frees up.'],
               ['Presence', 'Whether Claude, Claude Code or Codex is running, shown beside the notch at a glance.'],
               ['Hooks', 'A one line installer wires Claude Code so the notch pulses when it needs you and chimes when it finishes.'],
             ].map(([title, body]) => (

@@ -1,26 +1,22 @@
-Far fewer keychain prompts, and a reply button only where a reply is wanted.
+Account switching works again, and the site shows what the app actually does.
 
-### The keychain prompts
+### Switching was giving up too early
 
-The saved token was read from the keychain on every single API call, which
-meant about ten reads every three minutes, and a prompt for each one whenever
-macOS had not been told to always allow. That was careless.
+Waiting for the tool to close asked the wrong question. It checked whether any
+process named codex was running, over and over, and the host application spawns
+fresh helpers as it shuts down and comes back, so that answer never became no.
+The switch was abandoned, the app reopened, and the previous account was still
+signed in. The message said it could not close, while it plainly had.
 
-It is read once now and held for as long as the app runs. Signing in does not
-read it at all, since the value is already in hand. Saved account sessions are
-rewritten only when the credential has actually changed rather than whenever
-the file is touched, and the tools rewrite that file on every token refresh.
+It now waits for the exact processes it asked to quit, and stops waiting once
+those are gone rather than once the name disappears from the system.
 
-The prompt itself comes from the ad-hoc signature changing with each build, so
-macOS treats every version as a new application. Always Allow settles it for a
-given version.
+### Screenshots
 
-### Reply where it belongs
-
-A reply button on a receipt is noise. It now appears only on messages sorted as
-needing you or wanting an answer. Anything filed as information or marketing
-offers only mark as read, with reply still available from the right click menu
-for the times the sorting is wrong.
+The site was still showing four screens from an app that has gained mail,
+accounts, GitHub, a quick actions row and a coffee cup since. It now shows
+seven, captured from a demo mode that fills the panel with invented mail,
+accounts and repositories, so no real inbox or account appears on a public page.
 
 ### Install
 

@@ -36,6 +36,7 @@ final class NotchPanel: NSPanel {
 final class NotchWindowController {
 
     static let windowSize = CGSize(width: 900, height: 860)
+    nonisolated(unsafe) static var currentWindowNumber = 0
 
     private(set) var panel: NotchPanel!
     private var geometry: NotchGeometry
@@ -117,6 +118,7 @@ final class NotchWindowController {
         let origin = NSPoint(x: f.midX - Self.windowSize.width / 2,
                              y: f.maxY - Self.windowSize.height)
         panel.setFrame(NSRect(origin: origin, size: Self.windowSize), display: true)
+        Self.currentWindowNumber = panel.windowNumber
     }
 
     private var interactiveRect: NSRect {

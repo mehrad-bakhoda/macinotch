@@ -212,7 +212,10 @@ final class AccountService: ObservableObject {
         AccountProvider.allCases.filter { hasSession($0) || !accounts(for: $0).isEmpty }
     }
 
+    private var demoLocked = false
+
     func refresh() {
+        guard !demoLocked else { return }
         for provider in AccountProvider.allCases { refresh(provider) }
     }
 
@@ -301,12 +304,12 @@ final class AccountService: ObservableObject {
         refresh(provider)
     }
 
-    func activate(_ id: String) throws {
+    func activate(_ id: String, force: Bool = false) throws {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else {
             throw AccountError.notStored
         }
         let provider = accounts[index].provider
-        guard !Self.isRunning(provider) else {
+        guard force || !Self.isRunning(provider) else {
             throw AccountError.providerRunning(provider)
         }
         guard let box = readKeychain(id: id) else { throw AccountError.notStored }
@@ -406,22 +409,33 @@ final class AccountService: ObservableObject {
         lastError = ""
         defer { busy = false }
 
-        let bundleIds = Self.hostApps(provider).compactMap(\.bundleIdentifier)
-        for app in Self.hostApps(provider) { app.terminate() }
+        let apps = Self.hostApps(provider)
+        let bundleIds = apps.compactMap(\.bundleIdentifier)
+        var watched = Set(apps.map(\.processIdentifier))
+        watched.formUnion(PresenceService.pids(named: provider.processName))
+
+        for app in apps { app.terminate() }
+        for pid in PresenceService.pids(named: provider.processName) {
+            kill(pid, SIGTERM)
+        }
 
         let deadline = Date().addingTimeInterval(20)
-        while Date() < deadline && Self.isRunning(provider) {
+        while Date() < deadline, Self.anyAlive(watched) {
             try? await Task.sleep(nanoseconds: 300_000_000)
         }
-        if Self.isRunning(provider) {
-            for app in Self.hostApps(provider) { app.forceTerminate() }
+        if Self.anyAlive(watched) {
+            for app in Self.hostApps(provider) where watched.contains(
+                app.processIdentifier) {
+                app.forceTerminate()
+            }
+            for pid in watched where kill(pid, 0) == 0 { kill(pid, SIGKILL) }
             try? await Task.sleep(nanoseconds: 1_500_000_000)
         }
 
-        if Self.isRunning(provider) {
+        if Self.anyAlive(watched) {
             lastError = AccountError.stillRunning(provider).localizedDescription
         } else {
-            do { try activate(id) }
+            do { try activate(id, force: true) }
             catch { lastError = error.localizedDescription }
         }
 
@@ -431,6 +445,10 @@ final class AccountService: ObservableObject {
             _ = try? await NSWorkspace.shared.openApplication(
                 at: url, configuration: NSWorkspace.OpenConfiguration())
         }
+    }
+
+    static func anyAlive(_ pids: Set<pid_t>) -> Bool {
+        pids.contains { kill($0, 0) == 0 }
     }
 
     static func isRunning(_ provider: AccountProvider) -> Bool {
@@ -758,4 +776,13 @@ final class AccountService: ObservableObject {
         guard let data = Data(base64Encoded: encoded) else { return nil }
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
+
+    func loadDemo(_ items: [SavedAccount], active: String) {
+        demoLocked = true
+        accounts = items
+        activeId[.codex] = active
+        currentEmail[.codex] = items.first { $0.id == active }?.email ?? ""
+        stop()
+    }
+
 }

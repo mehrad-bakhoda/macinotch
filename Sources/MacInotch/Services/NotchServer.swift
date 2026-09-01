@@ -10,17 +10,20 @@ final class NotchServer: @unchecked Sendable {
     private let onPrefsPatch: @Sendable (Data) -> Void
     private let onFanCommand: @Sendable ([String: Any]) -> String
     private let onCaffeine: @Sendable ([String: Any]) -> String
+    private let onTab: @Sendable (String) -> String
 
     init(onPayload: @escaping @Sendable (NotchPayload) -> Void,
          stateJSON: @escaping @Sendable () -> String = { "{}" },
          onPrefsPatch: @escaping @Sendable (Data) -> Void = { _ in },
          onFanCommand: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" },
-         onCaffeine: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" }) {
+         onCaffeine: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" },
+         onTab: @escaping @Sendable (String) -> String = { _ in "{}" }) {
         self.onPayload = onPayload
         self.stateJSON = stateJSON
         self.onPrefsPatch = onPrefsPatch
         self.onFanCommand = onFanCommand
         self.onCaffeine = onCaffeine
+        self.onTab = onTab
     }
 
     func start() {
@@ -114,6 +117,13 @@ final class NotchServer: @unchecked Sendable {
                 }
             }
             respond(conn, 200, onFanCommand(command))
+
+        case "/tab":
+            var name = "home"
+            if let comps = URLComponents(string: "http://localhost" + req.path) {
+                name = comps.queryItems?.first { $0.name == "name" }?.value ?? "home"
+            }
+            respond(conn, 200, onTab(name))
 
         case "/caffeine":
             var command: [String: Any] = [:]

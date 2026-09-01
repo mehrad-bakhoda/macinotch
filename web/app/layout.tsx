@@ -23,9 +23,13 @@ export const metadata: Metadata = {
     template: '%s | MacInotch',
   },
   description:
-    'MacInotch turns the notch on a MacBook into a live system readout, a notification surface, a file shelf and a media controller. Free, open source, MIT licensed.',
+    'MacInotch turns the notch on a MacBook into a live readout of your machine, your mail, your AI usage and your repositories. Unread mail triaged and summarised on device, Codex and Claude Code limits with saved accounts you can switch between, GitHub activity, a file shelf, fan control and media, all local.',
   keywords: [
     'macos notch app',
+    'switch codex accounts',
+    'claude code usage',
+    'codex usage tracker',
+    'mail summary mac',
     'macbook notch utility',
     'dynamic island for mac',
     'notch notifications macos',
@@ -48,7 +52,7 @@ export const metadata: Metadata = {
     siteName: 'MacInotch',
     title: 'MacInotch, a notch utility for macOS',
     description:
-      'Live system vitals, notifications, a file shelf and media control, in the space your MacBook was already wasting.',
+      'Mail triaged on device, AI usage limits, account switching, GitHub activity, vitals, a file shelf and media control, in the space your MacBook was already wasting.',
     images: [{ url: '/og.png', width: 1200, height: 630, alt: 'MacInotch' }],
     locale: 'en_US',
   },
@@ -56,7 +60,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'MacInotch, a notch utility for macOS',
     description:
-      'Live system vitals, notifications, a file shelf and media control, in the space your MacBook was already wasting.',
+      'Mail triaged on device, AI usage limits, account switching, GitHub activity, vitals, a file shelf and media control, in the space your MacBook was already wasting.',
     images: ['/og.png'],
   },
   robots: {
@@ -73,7 +77,7 @@ const structuredData = {
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'macOS 14 or later',
   description:
-    'A macOS utility that turns the MacBook notch into a live system readout, notification surface, file shelf and media controller.',
+    'A macOS utility that turns the MacBook notch into a live system readout, mail triage, AI usage tracker, account switcher, notification surface, file shelf and media controller.',
   url: site,
   downloadUrl: 'https://github.com/mehrad-bakhoda/macinotch/releases/latest',
   license: 'https://opensource.org/licenses/MIT',

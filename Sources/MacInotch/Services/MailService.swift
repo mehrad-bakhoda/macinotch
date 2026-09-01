@@ -89,6 +89,7 @@ final class MailService: ObservableObject {
 
     func refresh() async {
         guard Prefs.shared.d.showMail, !busy else { return }
+        guard !demoLocked else { return }
         guard Self.mailIsRunning else {
             state = .notRunning
             if !messages.isEmpty { messages = [] }
@@ -396,4 +397,14 @@ final class MailService: ObservableObject {
         if error != nil { return nil }
         return value?.stringValue ?? ""
     }
+
+    private var demoLocked = false
+
+    func loadDemo(_ items: [MailMessage]) {
+        demoLocked = true
+        messages = items
+        state = .ready
+        stop()
+    }
+
 }

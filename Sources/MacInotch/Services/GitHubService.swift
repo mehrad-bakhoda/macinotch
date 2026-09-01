@@ -290,6 +290,7 @@ final class GitHubService: ObservableObject {
 
     func refresh() async {
         guard hasToken, !busy else { return }
+        guard !demoLocked else { return }
         busy = true
         defer { busy = false }
 
@@ -424,4 +425,14 @@ final class GitHubService: ObservableObject {
             NotchState.shared.handle(p)
         }
     }
+
+    private var demoLocked = false
+
+    func loadDemo(_ snap: GitHubSnapshot) {
+        demoLocked = true
+        snapshot = snap
+        hasToken = true
+        stop()
+    }
+
 }
