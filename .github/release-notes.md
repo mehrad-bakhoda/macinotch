@@ -1,26 +1,31 @@
-Unread mail in the notch, summarised on device, with a reply box.
+Mail that scrolls, sorts itself by what needs you, and offers a first draft.
 
-### Mail
+### It sorts itself
 
-A Mail tab lists what is unread from the last day, newest first, with the
-sender, the subject and how long ago it landed. Flagged messages are marked.
-New mail raises a notification, flagged mail more insistently.
+Every message is put into one of four buckets by the on device model, judged by
+what you have to do rather than how the message sounds: needs you now, wants a
+reply, for information, or marketing. Each carries a small tag, and the ones
+waiting on you get a dot.
 
-Each message carries a one sentence summary written by the language model
-built into macOS. It runs on the machine, so no mail is sent anywhere, no
-account is involved and no key is needed. Where Apple Intelligence is not
-available the summary falls back to the opening lines of the message.
+The header counts how many are actually waiting. Tapping that count hides
+everything else, which on a normal morning is most of it.
 
-Replies are written in the panel and sent through Mail. Nothing is ever sent
-without pressing send.
+The distinction that matters is between a message that demands something and
+one that merely reports something. A notice saying review this if it was not
+you is not urgent; a named deadline is.
 
-### How it reads your mail
+### It scrolls
 
-Through Mail itself, so your accounts stay where macOS keeps them and this app
-holds no mail credentials, no password and no token of its own. It needs the
-account added in Internet Accounts, the same place calendars come from, and
-Mail running, since it reads what Mail already has rather than talking to a
-mail server. The tab says which of those is missing rather than sitting empty.
+The list ran off the bottom of the panel with no way to reach the rest. It
+scrolls now.
+
+### It can write the first draft
+
+The reply box has a draft button. The on device model writes a short answer to
+the message you are replying to, which you then edit and send yourself. It is
+told not to promise a date, a figure, or anything else the message does not
+contain, and to say so plainly where the answer depends on something it cannot
+know. Nothing is ever sent without pressing send.
 
 ### Install
 

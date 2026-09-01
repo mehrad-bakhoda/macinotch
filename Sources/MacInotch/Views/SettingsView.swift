@@ -442,6 +442,12 @@ struct SettingsView: View {
                 Stepper("Show at most \(prefs.d.mailLimit)",
                         value: $prefs.d.mailLimit, in: 3...30)
                     .disabled(!prefs.d.showMail)
+                Toggle("Sort by what needs you first", isOn: $prefs.d.mailSortByImportance)
+                    .disabled(!prefs.d.showMail)
+                Text("Each message is sorted into needs you now, wants a reply, for "
+                     + "information, or marketing, by the same on device model. The "
+                     + "count in the tab header filters to the ones waiting on you.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text(Summarizer.onDeviceAvailable
                      ? "Summaries are written by the model built into macOS. Nothing "
                        + "leaves the machine and no account or key is needed."

@@ -83,6 +83,8 @@ struct PrefsData: Codable, Equatable {
     var mailWindowHours      = 24.0
     var mailLimit            = 12
     var mailHasAccounts      = false
+    var mailSortByImportance = true
+    var mailNeedsReplyOnly   = false
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

@@ -11,8 +11,11 @@ struct MailMessage: Identifiable, Equatable {
     var account: String
     var preview: String
     var summary: String = ""
+    var triage: MailTriage?
+    var listMail: Bool = false
 
-    var important: Bool { flagged }
+    var important: Bool { flagged || triage == .urgent }
+    var wantsAnswer: Bool { triage?.wantsAnswer ?? false }
 
     var ago: String {
         let seconds = Int(Date().timeIntervalSince(received))
@@ -46,6 +49,7 @@ final class MailService: ObservableObject {
     @Published var replyingTo: String?
     @Published var draft = ""
     @Published var sending = false
+    @Published var drafting = false
 
     private var timer: Timer?
     private var announced: Set<String> = []
@@ -110,9 +114,11 @@ final class MailService: ObservableObject {
             Prefs.shared.d.mailHasAccounts = true
 
             for index in found.indices {
-                if let existing = messages.first(where: { $0.id == found[index].id }),
-                   !existing.summary.isEmpty {
-                    found[index].summary = existing.summary
+                if let existing = messages.first(where: { $0.id == found[index].id }) {
+                    if !existing.summary.isEmpty {
+                        found[index].summary = existing.summary
+                    }
+                    if existing.triage != nil { found[index].triage = existing.triage }
                 }
             }
             messages = found
@@ -146,17 +152,62 @@ final class MailService: ObservableObject {
 
     private func summarise() async {
         guard Prefs.shared.d.mailSummaries else { return }
-        let pending = messages.filter { $0.summary.isEmpty && !$0.preview.isEmpty }
+        let pending = messages.filter {
+            ($0.summary.isEmpty || $0.triage == nil) && !$0.preview.isEmpty
+        }
         guard !pending.isEmpty else { return }
 
-        for message in pending.prefix(6) {
+        for message in pending.prefix(8) {
             let text = message.preview
             let subject = message.subject
-            let result = await Summarizer.shared.summarise(subject: subject, body: text)
-            guard !result.isEmpty,
-                  let index = messages.firstIndex(where: { $0.id == message.id })
-            else { continue }
-            messages[index].summary = result
+
+            if message.summary.isEmpty {
+                let result = await Summarizer.shared.summarise(subject: subject,
+                                                               body: text)
+                if !result.isEmpty,
+                   let index = messages.firstIndex(where: { $0.id == message.id }) {
+                    messages[index].summary = result
+                }
+            }
+
+            if message.triage == nil {
+                let verdict = await Summarizer.shared.triage(
+                    subject: subject, body: text,
+                    sender: message.senderAddress, bulkHint: message.listMail)
+                if let index = messages.firstIndex(where: { $0.id == message.id }) {
+                    messages[index].triage = verdict
+                }
+            }
+        }
+        sortMessages()
+    }
+
+    private func sortMessages() {
+        guard Prefs.shared.d.mailSortByImportance else { return }
+        messages.sort {
+            let left = $0.triage?.rank ?? 2
+            let right = $1.triage?.rank ?? 2
+            if left != right { return left < right }
+            return $0.received > $1.received
+        }
+    }
+
+    func draftReply(for id: String) {
+        guard let message = messages.first(where: { $0.id == id }) else { return }
+        drafting = true
+        let subject = message.subject
+        let body = message.preview
+        let sender = message.sender
+
+        Task {
+            let suggestion = await Summarizer.shared.replyDraft(
+                subject: subject, body: body, sender: sender)
+            drafting = false
+            guard !suggestion.isEmpty else {
+                lastError = "No suggestion could be written for that one."
+                return
+            }
+            draft = suggestion
         }
     }
 
@@ -257,13 +308,19 @@ final class MailService: ObservableObject {
                 try
                     set acct to (name of account of mailbox of m)
                 end try
+                set bulkFlag to "0"
+                try
+                    if (content of (header "list-unsubscribe" of m)) is not "" then ¬
+                        set bulkFlag to "1"
+                end try
                 set out to out & (id of m as text) & (ASCII character 31) & ¬
                     senderName & (ASCII character 31) & ¬
                     senderMail & (ASCII character 31) & ¬
                     (subject of m as text) & (ASCII character 31) & ¬
                     ((date received of m) as «class isot» as string) & ¬
                     (ASCII character 31) & flagState & (ASCII character 31) & ¬
-                    acct & (ASCII character 31) & body & (ASCII character 30)
+                    acct & (ASCII character 31) & body & (ASCII character 31) & ¬
+                    bulkFlag & (ASCII character 30)
             end repeat
             return out
         end tell
@@ -289,7 +346,8 @@ final class MailService: ObservableObject {
                 received: formatter.date(from: parts[4]) ?? Date(),
                 flagged: parts[5] == "1",
                 account: parts[6],
-                preview: Self.clean(parts[7])))
+                preview: Self.clean(parts[7]),
+                listMail: parts.count > 8 && parts[8] == "1"))
         }
         return .success(found.sorted { $0.received > $1.received })
     }

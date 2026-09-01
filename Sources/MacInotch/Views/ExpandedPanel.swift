@@ -406,10 +406,27 @@ struct ExpandedPanel: View {
 
     private var mailTab: some View {
         VStack(alignment: .leading, spacing: 9) {
-            HStack {
+            HStack(spacing: 8) {
                 sectionLabel("UNREAD TODAY", action: nil)
                 Spacer()
                 if mail.state == .ready {
+                    let waiting = mail.messages.filter(\.wantsAnswer).count
+                    Button {
+                        prefs.d.mailNeedsReplyOnly.toggle()
+                    } label: {
+                        Text(p.mailNeedsReplyOnly
+                             ? "Showing \(waiting) waiting" : "\(waiting) waiting")
+                            .font(.system(size: 9.5, weight: .semibold))
+                            .foregroundStyle(p.mailNeedsReplyOnly
+                                             ? (t.isDark ? Color.black : Color.white)
+                                             : t.accent)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Capsule().fill(p.mailNeedsReplyOnly
+                                                       ? t.accent : t.control))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                     Text("\(mail.messages.count)")
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(t.tertiary)
@@ -438,10 +455,23 @@ struct ExpandedPanel: View {
                         .font(.system(size: 11))
                         .foregroundStyle(t.tertiary)
                 } else {
-                    ForEach(mail.messages) { message in
-                        mailRow(message)
-                        if mail.replyingTo == message.id { replyBox(message) }
+                    let shown = p.mailNeedsReplyOnly
+                        ? mail.messages.filter(\.wantsAnswer) : mail.messages
+                    if shown.isEmpty {
+                        Text("Nothing is waiting on you")
+                            .font(.system(size: 11))
+                            .foregroundStyle(t.tertiary)
                     }
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 9) {
+                            ForEach(shown) { message in
+                                mailRow(message)
+                                if mail.replyingTo == message.id { replyBox(message) }
+                            }
+                        }
+                        .padding(.trailing, 4)
+                    }
+                    .frame(maxHeight: 300)
                 }
             }
 
@@ -481,21 +511,41 @@ struct ExpandedPanel: View {
                      theme: t,
                      onTap: { mail.openInMail(message.id) },
                      leading: {
-                         ZStack {
-                             Circle()
-                                 .fill(message.important
-                                       ? t.orange.opacity(0.22) : t.wellFill)
-                             Text(message.initials)
-                                 .font(.system(size: 9.5, weight: .bold))
-                                 .foregroundStyle(message.important ? t.orange
-                                                                    : t.secondary)
+                         ZStack(alignment: .topTrailing) {
+                             ZStack {
+                                 Circle()
+                                     .fill(message.important
+                                           ? t.red.opacity(0.20) : t.wellFill)
+                                 Text(message.initials)
+                                     .font(.system(size: 9.5, weight: .bold))
+                                     .foregroundStyle(message.important ? t.red
+                                                                        : t.secondary)
+                             }
+                             .frame(width: 26, height: 26)
+                             if message.wantsAnswer {
+                                 Circle()
+                                     .fill(message.triage == .urgent ? t.red : t.accent)
+                                     .frame(width: 7, height: 7)
+                                     .offset(x: 1, y: -1)
+                             }
                          }
                          .frame(width: 26, height: 26)
                      },
                      trailing: {
-                         Text(message.ago)
-                             .font(.system(size: 9))
-                             .foregroundStyle(t.tertiary)
+                         VStack(alignment: .trailing, spacing: 3) {
+                             Text(message.ago)
+                                 .font(.system(size: 9))
+                                 .foregroundStyle(t.tertiary)
+                             if let triage = message.triage {
+                                 Text(triage.short)
+                                     .font(.system(size: 8, weight: .bold))
+                                     .foregroundStyle(triageTint(triage))
+                                     .padding(.horizontal, 4.5)
+                                     .padding(.vertical, 1.5)
+                                     .background(Capsule()
+                                         .fill(triageTint(triage).opacity(0.16)))
+                             }
+                         }
                      })
                 .contextMenu {
                     Button("Mark as read") { mail.markRead(message.id) }
@@ -531,6 +581,15 @@ struct ExpandedPanel: View {
         }
     }
 
+    private func triageTint(_ triage: MailTriage) -> Color {
+        switch triage {
+        case .urgent: return t.red
+        case .reply: return t.accent
+        case .notice: return t.tertiary
+        case .bulk: return t.tertiary
+        }
+    }
+
     private func replyBox(_ message: MailMessage) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Text("Replying to \(message.sender)")
@@ -545,6 +604,23 @@ struct ExpandedPanel: View {
                 .background(RoundedRectangle(cornerRadius: 8).fill(t.wellFill))
 
             HStack(spacing: 8) {
+                Button {
+                    mail.draftReply(for: message.id)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wand.and.sparkles")
+                            .font(.system(size: 9.5, weight: .semibold))
+                        Text(mail.drafting ? "Writing" : "Draft one")
+                            .font(.system(size: 10.5, weight: .medium))
+                    }
+                    .foregroundStyle(t.accent)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(t.control))
+                }
+                .buttonStyle(.plain)
+                .disabled(mail.drafting)
+
                 Button {
                     mail.sendReply()
                 } label: {

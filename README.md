@@ -62,8 +62,10 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - **Dock**, a file shelf and clipboard history. Drag files onto the notch to
   park them, then drag them straight back out. Named piles keep work separate.
   New screenshots land here automatically.
-- **Mail**, unread messages from the last day with a one sentence summary
-  written on device, and a reply box.
+- **Mail**, unread messages from the last day, sorted into what needs you now,
+  what wants a reply, what is only information and what is marketing, each with
+  a one sentence summary written on device, and a reply box that can draft the
+  answer for you to edit.
 - **GitHub**, today's pushes, pull requests and reviews waiting on you, a
   contribution graph and any failing workflows.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
