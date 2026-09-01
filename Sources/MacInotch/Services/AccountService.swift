@@ -472,6 +472,61 @@ final class AccountService: ObservableObject {
         save()
     }
 
+    nonisolated static func storedIdentifiers() -> [String] {
+        var request: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "io.macinotch.accounts",
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        request[kSecAttrSynchronizable as String] = false
+
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(request as CFDictionary, &item) == errSecSuccess,
+              let rows = item as? [[String: Any]] else { return [] }
+        return rows.compactMap { $0[kSecAttrAccount as String] as? String }
+    }
+
+    var orphanCount: Int {
+        let known = Set(accounts.map(\.id))
+        return Self.storedIdentifiers().filter { !known.contains($0) }.count
+    }
+
+    func recoverFromKeychain() {
+        let known = Set(accounts.map(\.id))
+        let orphans = Self.storedIdentifiers().filter { !known.contains($0) }
+        guard !orphans.isEmpty else {
+            lastError = "Nothing unlisted was found in the keychain."
+            return
+        }
+
+        var recovered = 0
+        for id in orphans {
+            guard let box = readKeychain(id: id) else { continue }
+
+            let provider: AccountProvider =
+                Self.looksUsable(.codex, credential: box.credential) ? .codex : .claude
+            let identity = identity(provider, credential: box.credential,
+                                    sidecar: box.sidecar)
+
+            accounts.append(SavedAccount(
+                id: id,
+                provider: provider,
+                label: identity.email.isEmpty ? "Recovered account" : identity.email,
+                email: identity.email,
+                plan: identity.plan,
+                accountId: identity.accountId,
+                addedAt: Date(),
+                lastUsedAt: nil,
+                savedAt: Date()))
+            recovered += 1
+        }
+
+        save()
+        refresh()
+        lastError = recovered > 0 ? "" : "Those keychain entries could not be read."
+    }
+
     func clearReading(_ id: String) {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
         accounts[index].knownPercent = nil
@@ -701,6 +756,7 @@ final class AccountService: ObservableObject {
     }
 
     fileprivate func save() {
+        guard !demoLocked else { return }
         accounts.sort { $0.addedAt < $1.addedAt }
         guard let data = try? JSONEncoder().encode(accounts) else { return }
         try? data.write(to: metadataURL, options: [.atomic])

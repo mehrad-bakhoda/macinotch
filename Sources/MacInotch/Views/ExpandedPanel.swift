@@ -790,6 +790,27 @@ struct ExpandedPanel: View {
                 providerBlock(provider)
             }
 
+            if switcher.orphanCount > 0 {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("\(switcher.orphanCount) saved sign in"
+                         + (switcher.orphanCount == 1 ? "" : "s") + " not listed")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(t.orange)
+                    Text("The keychain still holds them but this list does not. "
+                         + "Recovering reads them back and names them from the "
+                         + "session itself.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(t.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Recover them") { switcher.recoverFromKeychain() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(t.accent)
+                }
+                .padding(9)
+                .background(RoundedRectangle(cornerRadius: 10).fill(t.wellFill))
+            }
+
             if switcher.busy {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)

@@ -1208,6 +1208,15 @@ struct SettingsView: View {
                         .controlSize(.small)
                 }
             }
+            if switcher.orphanCount > 0 {
+                HStack {
+                    Text("\(switcher.orphanCount) saved sign in(s) in the keychain "
+                         + "are not listed above.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button("Recover") { switcher.recoverFromKeychain() }
+                        .controlSize(.small)
+                }
+            }
             if !switcher.lastError.isEmpty {
                 Text(switcher.lastError).font(.caption).foregroundStyle(.red)
             }
