@@ -1,31 +1,28 @@
-Quick actions and connecting accounts, without opening Settings.
+Sign in to GitHub with a click, instead of making a token by hand.
 
-### A row of actions in the panel
+### Signing in
 
-Meeting mode, holding notifications, Focus, and screen recording are now
-buttons at the top of the panel. Each lights up when it is on and turns off
-with the same click, so going quiet for a call and coming back out of it is
-two taps in the place you were already looking.
+GitHub's device flow is now supported. Pressing sign in opens github.com,
+shows a short code that is already on your clipboard, and waits. Approving it
+in the browser finishes the sign in. Nothing is typed into MacInotch, and no
+client secret exists to leak, which is the point of that flow.
 
-### Connecting is one click
+The resulting token goes into the login keychain, marked accessible only when
+unlocked and only on this device, and is read back at launch so signing in
+happens once.
 
-The calendar and GitHub buttons sit in the same row and show whether they are
-connected. Tapping the calendar asks macOS for access. Google, Exchange and
-other calendars come from the accounts already on the machine, so the button's
-menu opens Internet Accounts to add one.
+Device flow needs a client id, which is a public identifier rather than a
+secret. Until one is set the button explains the one time setup, and pasting a
+personal access token still works for anyone who prefers it.
 
-Tapping GitHub opens a field to paste a token, with a link to the page that
-creates one. The panel pins itself while the field is open so it cannot
-collapse mid paste.
+### A fix worth knowing about
 
-### Where the token goes
-
-Straight into your login keychain, marked accessible only when unlocked and
-only on this device. It is never synced, never written to preferences or any
-file, never printed, and never appears on the local endpoint. The field is a
-secure one and is cleared the moment it is used. Requests go to api.github.com
-and nowhere else. Connecting again after a restart is not necessary; the
-keychain entry is read at launch.
+A copy of the application was being left in the build directory next to the
+installed one. Both carried the same identifier, so macOS could launch either,
+and permissions such as calendar access are granted per application rather
+than per name. Granting access to one and running the other looked exactly
+like a permission that would not stick. The stray copy is gone and the build
+directory is ignored.
 
 ### Install
 

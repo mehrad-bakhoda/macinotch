@@ -186,63 +186,93 @@ struct ExpandedPanel: View {
     }
 
     private var githubConnect: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("Paste a GitHub token")
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(t.primary)
-
-            HStack(spacing: 6) {
-                SecureField("ghp_ or github_pat_", text: $nav.githubToken)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11, design: .monospaced))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 7).fill(t.wellFill))
-
-                Button {
-                    github.connect(token: nav.githubToken)
-                    nav.githubToken = ""
-                    nav.connectingGitHub = false
-                    state.pinned = false
-                } label: {
-                    Text("Connect")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(t.isDark ? Color.black : Color.white)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(t.accent))
+        VStack(alignment: .leading, spacing: 8) {
+            if !github.userCode.isEmpty {
+                Text("Enter this code on GitHub")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(t.primary)
+                HStack(spacing: 8) {
+                    Text(github.userCode)
+                        .font(.system(size: 19, weight: .bold, design: .monospaced))
+                        .foregroundStyle(t.accent)
+                        .textSelection(.enabled)
+                    Text("copied, waiting for you")
+                        .font(.system(size: 10))
+                        .foregroundStyle(t.tertiary)
+                    Spacer()
+                    Button("Cancel") { github.cancelSignIn() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10))
+                        .foregroundStyle(t.tertiary)
                 }
-                .buttonStyle(.plain)
-                .disabled(nav.githubToken.isEmpty)
-            }
-
-            HStack(spacing: 8) {
-                Button("Create a token") {
-                    if let url = URL(string:
-                        "https://github.com/settings/personal-access-tokens/new") {
+                Button("Open the page again") {
+                    if let url = URL(string: github.verificationURL) {
                         NSWorkspace.shared.open(url)
                     }
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(t.accent)
+            } else if github.canSignIn {
+                HStack(spacing: 8) {
+                    Button {
+                        Task { await github.signIn() }
+                    } label: {
+                        Text(github.signingIn ? "Starting" : "Sign in with GitHub")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(t.isDark ? Color.black : Color.white)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(t.accent))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(github.signingIn)
 
-                Button("Cancel") {
-                    nav.githubToken = ""
-                    nav.connectingGitHub = false
-                    state.pinned = false
+                    Button("Cancel") {
+                        nav.connectingGitHub = false
+                        state.pinned = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.tertiary)
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 10))
-                .foregroundStyle(t.tertiary)
+                Text("Opens github.com and asks you to approve. Nothing is typed here.")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(t.tertiary)
+            } else {
+                Text("Sign in needs a one time setup")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(t.primary)
+                Text("Register a GitHub OAuth app once and paste its client id in "
+                     + "Settings. After that this button signs in with one click, "
+                     + "for you and anyone else running MacInotch.")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(t.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Button("Open Settings") {
+                        SettingsNav.shared.tab = .general
+                        SettingsWindow.shared.show()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(t.accent)
+                    Button("Cancel") {
+                        nav.connectingGitHub = false
+                        state.pinned = false
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.tertiary)
+                }
             }
 
-            Text("Needs read access to your repositories plus Actions read. It is "
-                 + "kept in your keychain for this device only and is sent nowhere "
-                 + "except api.github.com.")
-                .font(.system(size: 9.5))
-                .foregroundStyle(t.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            if !github.lastError.isEmpty {
+                Text(github.lastError)
+                    .font(.system(size: 10))
+                    .foregroundStyle(t.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 11).fill(t.wellFill))

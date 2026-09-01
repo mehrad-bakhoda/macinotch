@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Security
 
@@ -43,6 +44,9 @@ final class GitHubService: ObservableObject {
     @Published private(set) var snapshot = GitHubSnapshot()
     @Published private(set) var busy = false
     @Published var lastError = ""
+    @Published private(set) var userCode = ""
+    @Published private(set) var verificationURL = ""
+    @Published private(set) var signingIn = false
 
     private let service = "io.macinotch.github"
     private let account = "token"
@@ -73,6 +77,110 @@ final class GitHubService: ObservableObject {
         primed = false
         announced.removeAll()
         start()
+    }
+
+    var clientId: String {
+        Prefs.shared.d.githubClientId.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var canSignIn: Bool { !clientId.isEmpty }
+
+    func signIn() async {
+        guard canSignIn, !signingIn else { return }
+        signingIn = true
+        lastError = ""
+        userCode = ""
+        verificationURL = ""
+        defer { signingIn = false }
+
+        guard let start = await post(
+            "https://github.com/login/device/code",
+            fields: ["client_id": clientId, "scope": "repo read:user"]) else {
+            lastError = "GitHub did not start the sign in."
+            return
+        }
+
+        guard let device = start["device_code"] as? String,
+              let code = start["user_code"] as? String,
+              let uri = start["verification_uri"] as? String else {
+            lastError = start["error_description"] as? String
+                ?? "GitHub refused the sign in request."
+            return
+        }
+
+        userCode = code
+        verificationURL = uri
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code, forType: .string)
+        if let url = URL(string: uri) { NSWorkspace.shared.open(url) }
+
+        let interval = (start["interval"] as? Int) ?? 5
+        let expires = Date().addingTimeInterval(Double(start["expires_in"] as? Int ?? 900))
+        var wait = UInt64(interval) * 1_000_000_000
+
+        while Date() < expires {
+            try? await Task.sleep(nanoseconds: wait)
+            guard signingIn else { return }
+
+            guard let poll = await post(
+                "https://github.com/login/oauth/access_token",
+                fields: ["client_id": clientId, "device_code": device,
+                         "grant_type": "urn:ietf:params:oauth:grant-type:device_code"])
+            else { continue }
+
+            if let token = poll["access_token"] as? String {
+                userCode = ""
+                verificationURL = ""
+                connect(token: token)
+                return
+            }
+            switch poll["error"] as? String {
+            case "authorization_pending": continue
+            case "slow_down": wait += 5_000_000_000
+            case "expired_token":
+                lastError = "The code expired. Try again."
+                userCode = ""
+                return
+            case "access_denied":
+                lastError = "Sign in was declined."
+                userCode = ""
+                return
+            default:
+                lastError = poll["error_description"] as? String ?? "Sign in failed."
+                userCode = ""
+                return
+            }
+        }
+        userCode = ""
+        lastError = "The code expired. Try again."
+    }
+
+    func cancelSignIn() {
+        signingIn = false
+        userCode = ""
+        verificationURL = ""
+    }
+
+    private func post(_ endpoint: String, fields: [String: String]) async -> [String: Any]? {
+        guard let url = URL(string: endpoint) else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/x-www-form-urlencoded",
+                         forHTTPHeaderField: "Content-Type")
+        request.setValue("MacInotch", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 20
+        let encoded = fields.map { key, value -> String in
+            let safe = value.addingPercentEncoding(
+                withAllowedCharacters: .alphanumerics) ?? value
+            return key + "=" + safe
+        }.joined(separator: "&")
+        request.httpBody = Data(encoded.utf8)
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request) else {
+            return nil
+        }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
 
     func disconnect() {

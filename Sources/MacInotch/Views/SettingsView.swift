@@ -265,19 +265,61 @@ struct SettingsView: View {
                             .controlSize(.small)
                     }
                 } else {
-                    SecureField("Personal access token", text: $nav.githubToken)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Connect") {
-                        github.connect(token: nav.githubToken)
-                        nav.githubToken = ""
+                    if github.canSignIn {
+                        if github.userCode.isEmpty {
+                            Button(github.signingIn ? "Starting" : "Sign in with GitHub") {
+                                Task { await github.signIn() }
+                            }
+                            .disabled(github.signingIn)
+                        } else {
+                            LabeledContent("Enter this code") {
+                                Text(github.userCode)
+                                    .font(.system(.title3, design: .monospaced).bold())
+                                    .textSelection(.enabled)
+                            }
+                            Text("Copied to the clipboard. The page is open in your "
+                                 + "browser and this window is waiting for it.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Button("Cancel") { github.cancelSignIn() }
+                                .controlSize(.small)
+                        }
                     }
-                    .controlSize(.small)
-                    Text("Create a fine grained token with read access to the "
-                         + "repositories you care about, plus Actions read. The token "
-                         + "goes straight into your keychain, marked for this device "
-                         + "only, and is never written to disk or sent anywhere except "
-                         + "api.github.com.")
-                        .font(.caption).foregroundStyle(.secondary)
+
+                    DisclosureGroup("One time setup, or use a token instead") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("For one click sign in, register an OAuth app on "
+                                 + "GitHub with device flow enabled and paste its "
+                                 + "client id here. It is a public identifier, not a "
+                                 + "secret, and no client secret is needed.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                TextField("Client id", text: $prefs.d.githubClientId)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Register an app") {
+                                    if let url = URL(string:
+                                        "https://github.com/settings/applications/new") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                }
+                                .controlSize(.small)
+                            }
+                            Divider()
+                            Text("Or paste a personal access token, which needs no "
+                                 + "setup but has to be created by hand.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                SecureField("Personal access token",
+                                            text: $nav.githubToken)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Connect") {
+                                    github.connect(token: nav.githubToken)
+                                    nav.githubToken = ""
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 if !github.lastError.isEmpty {
                     Text(github.lastError).font(.caption).foregroundStyle(.red)

@@ -36,6 +36,19 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Network** | Wi-Fi, VPN, and whether the connection is metered before you start a large download |
 | **Activity** | Recent notifications with optional action buttons |
 
+### Signing in to GitHub
+
+MacInotch supports GitHub's device flow, so signing in opens a browser, shows
+a code, and waits for you to approve it. Nothing is typed into the app and
+there is no client secret. A personal access token works too, for anyone who
+would rather make one by hand. Either way the credential is kept in the login
+keychain, marked for this device only, and never written to disk.
+
+The endpoints used are the authenticated user, your own event feed, a search
+for pull requests awaiting your review, and workflow runs for the repositories
+you have been active in. A fine grained token therefore needs Metadata,
+Contents, Pull requests and Actions, all read only.
+
 ### Quick actions
 
 A row of buttons at the top of the panel toggles meeting mode, holds
