@@ -65,6 +65,10 @@ struct PrefsData: Codable, Equatable {
     var alertNetwork         = true
     var focusShortcut        = ""
     var showFocusRow         = true
+    var suggestMeetingMode   = true
+    var meetingMutesAudio    = true
+    var meetingSilencesNotch = true
+    var showReminders        = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

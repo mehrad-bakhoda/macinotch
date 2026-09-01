@@ -2,6 +2,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ExpandedPanel: View {
+    static let clock: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     @EnvironmentObject var state: NotchState
     @ObservedObject private var prefs = Prefs.shared
     @ObservedObject private var themes = ThemeManager.shared
@@ -20,6 +26,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var network = NetworkService.shared
     @ObservedObject private var capture = CaptureService.shared
     @ObservedObject private var focusState = FocusWatcher.shared
+    @ObservedObject private var meeting = MeetingMode.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -1200,6 +1207,46 @@ struct ExpandedPanel: View {
                     out.append(RowSpec(id: "usage-codex",
                                        view: AnyView(tallyRow(.chatgpt, tally))))
                 }
+            }
+        }
+
+        if meeting.active {
+            out.append(RowSpec(id: "meeting-mode", view: AnyView(
+                PanelRow(id: "meeting-mode", title: "Meeting mode",
+                         subtitle: meeting.endsAt.map {
+                             "Quiet until \(Self.clock.string(from: $0))"
+                         } ?? "Audio muted, notifications held",
+                         theme: t,
+                         onTap: { meeting.disable() },
+                         leading: {
+                             IconBadge(symbol: "video.fill", tint: t.purple, theme: t)
+                         },
+                         trailing: {
+                             Text("End")
+                                 .font(.system(size: 10, weight: .semibold))
+                                 .foregroundStyle(t.accent)
+                         })
+            )))
+        }
+
+        if p.showReminders {
+            for reminder in calendar.reminders.prefix(4) {
+                out.append(RowSpec(id: "reminder-\(reminder.id)", view: AnyView(
+                    PanelRow(id: "reminder-\(reminder.id)", title: reminder.title,
+                             subtitle: reminder.detail, theme: t,
+                             onTap: {
+                                 if let url = URL(string: "x-apple-reminderkit://") {
+                                     NSWorkspace.shared.open(url)
+                                 }
+                             },
+                             leading: {
+                                 IconBadge(symbol: reminder.overdue
+                                           ? "exclamationmark.circle" : "checklist",
+                                           tint: reminder.overdue ? t.red : t.orange,
+                                           theme: t)
+                             },
+                             trailing: { EmptyView() })
+                )))
             }
         }
 

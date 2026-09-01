@@ -31,13 +31,31 @@ struct AgendaEvent: Equatable {
     }
 }
 
+struct ReminderItem: Identifiable, Equatable {
+    var id: String
+    var title: String
+    var due: Date?
+    var overdue: Bool
+    var list: String
+
+    var detail: String {
+        guard let due else { return list }
+        let formatter = DateFormatter()
+        formatter.dateFormat = Calendar.current.isDateInToday(due) ? "HH:mm" : "d MMM"
+        return "\(formatter.string(from: due)) · \(list)"
+    }
+}
+
 @MainActor
 final class CalendarService: ObservableObject {
     static let shared = CalendarService()
 
     @Published private(set) var next: AgendaEvent?
+    @Published private(set) var agenda: [AgendaEvent] = []
+    @Published private(set) var reminders: [ReminderItem] = []
     @Published private(set) var authorized = false
     @Published private(set) var denied = false
+    @Published private(set) var remindersAuthorized = false
 
     private let store = EKEventStore()
     private var timer: Timer?
@@ -71,9 +89,21 @@ final class CalendarService: ObservableObject {
                 self.tick()
             }
         }
+        requestReminderAccess()
+    }
+
+    func requestReminderAccess() {
+        store.requestFullAccessToReminders { [weak self] granted, _ in
+            Task { @MainActor in
+                self?.remindersAuthorized = granted
+                self?.tick()
+            }
+        }
     }
 
     private func refreshAuthorization() {
+        remindersAuthorized =
+            EKEventStore.authorizationStatus(for: .reminder) == .fullAccess
         switch EKEventStore.authorizationStatus(for: .event) {
         case .fullAccess:
             authorized = true
@@ -123,6 +153,56 @@ final class CalendarService: ObservableObject {
             calendarColor: event.calendar?.color)
 
         if candidate != next { next = candidate }
+
+        let today = Calendar.current.startOfDay(for: now)
+        let tomorrow = today.addingTimeInterval(86_400)
+        let list = upcoming.prefix(12).compactMap { event -> AgendaEvent? in
+            guard let start = event.startDate, let end = event.endDate,
+                  start < tomorrow else { return nil }
+            return AgendaEvent(title: event.title ?? "Untitled",
+                               start: start, end: end,
+                               location: event.location,
+                               joinURL: Self.conferenceURL(for: event),
+                               isAllDay: event.isAllDay,
+                               calendarColor: event.calendar?.color)
+        }
+        if list != agenda { agenda = list }
+
+        refreshReminders()
+    }
+
+    private func refreshReminders() {
+        guard Prefs.shared.d.showReminders, remindersAuthorized else {
+            if !reminders.isEmpty { reminders = [] }
+            return
+        }
+
+        let predicate = store.predicateForIncompleteReminders(
+            withDueDateStarting: nil,
+            ending: Calendar.current.startOfDay(for: Date()).addingTimeInterval(172_800),
+            calendars: nil)
+
+        store.fetchReminders(matching: predicate) { found in
+            let items = (found ?? []).prefix(12).map { reminder in
+                let due = reminder.dueDateComponents.flatMap {
+                    Calendar.current.date(from: $0)
+                }
+                return ReminderItem(
+                    id: reminder.calendarItemIdentifier,
+                    title: reminder.title ?? "Untitled",
+                    due: due,
+                    overdue: due.map { $0 < Date() } ?? false,
+                    list: reminder.calendar?.title ?? "Reminders")
+            }
+            let sorted = items.sorted {
+                ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture)
+            }
+            Task { @MainActor in
+                if sorted != CalendarService.shared.reminders {
+                    CalendarService.shared.reminders = sorted
+                }
+            }
+        }
     }
 
     private static let meetingHosts = [

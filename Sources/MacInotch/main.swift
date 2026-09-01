@@ -165,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         AccountService.shared.start()
         NetworkService.shared.start()
         AlertService.shared.start()
+        MeetingMode.shared.start()
 
         let gateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
             [weak self] _ in
@@ -571,6 +572,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 state.forceExpand()
                 AccountService.shared.requestActivate(id)
             }
+        case "meeting":
+            let on = components.queryItems?.first { $0.name == "on" }?.value
+            if on == "0" { MeetingMode.shared.disable() }
+            else { MeetingMode.shared.enable(until: nil) }
         case "pin":      state.togglePin()
         case "settings": SettingsWindow.shared.show()
         case "mute":

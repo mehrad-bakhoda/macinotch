@@ -60,6 +60,8 @@ jobs:
             <string>MacInotch uses your location to show local weather in the notch.</string>
             <key>NSCalendarsFullAccessUsageDescription</key>
             <string>MacInotch shows your next event and a join button in the notch.</string>
+            <key>NSRemindersFullAccessUsageDescription</key>
+            <string>MacInotch shows your reminders alongside your next event.</string>
             <key>NSAppleEventsUsageDescription</key>
             <string>MacInotch reads the currently playing track from Spotify and Music.</string>
           </dict>

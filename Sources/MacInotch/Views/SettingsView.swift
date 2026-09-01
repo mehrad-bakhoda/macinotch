@@ -246,6 +246,29 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Meetings") {
+                Toggle("Reminders in the panel", isOn: $prefs.d.showReminders)
+                Toggle("Offer meeting mode when a call starts",
+                       isOn: $prefs.d.suggestMeetingMode)
+                Toggle("Meeting mode mutes audio", isOn: $prefs.d.meetingMutesAudio)
+                    .disabled(!prefs.d.suggestMeetingMode)
+                Toggle("Meeting mode holds notifications",
+                       isOn: $prefs.d.meetingSilencesNotch)
+                    .disabled(!prefs.d.suggestMeetingMode)
+                HStack {
+                    Button("Connect calendar and reminders") {
+                        calendar.requestAccess()
+                    }
+                    .controlSize(.small)
+                    Text(calendar.authorized ? "Calendar connected" : "Calendar not connected")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Text("Meeting mode is offered when an event with a join link starts. "
+                     + "It mutes system audio and holds notifications until the event "
+                     + "ends, then puts both back the way it found them.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Focus") {
                 Toggle("Focus row in the panel", isOn: $prefs.d.showFocusRow)
                 Picker("Toggle with shortcut", selection: $prefs.d.focusShortcut) {
