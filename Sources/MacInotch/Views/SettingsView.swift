@@ -967,7 +967,8 @@ struct SettingsView: View {
                 .foregroundStyle(active ? Color.green : Color.secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(account.label).font(.system(size: 12, weight: .medium))
-                Text(account.subtitle).font(.caption2).foregroundStyle(.secondary)
+                Text(account.subtitle(showEmail: account.label != account.email))
+                    .font(.caption2).foregroundStyle(.secondary)
             }
             Spacer()
             if active {

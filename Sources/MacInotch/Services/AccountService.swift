@@ -61,11 +61,17 @@ struct SavedAccount: Identifiable, Codable, Equatable {
     var accountId: String
     var addedAt: Date
     var lastUsedAt: Date?
+    var savedAt: Date?
 
-    var subtitle: String {
+    func subtitle(showEmail: Bool) -> String {
         let planText = plan.isEmpty ? "" : plan.capitalized
-        if email.isEmpty { return planText }
+        guard showEmail, !email.isEmpty else { return planText }
         return planText.isEmpty ? email : "\(email) · \(planText)"
+    }
+
+    var isStale: Bool {
+        guard let savedAt else { return false }
+        return Date().timeIntervalSince(savedAt) > 60 * 60 * 24 * 25
     }
 }
 
@@ -75,6 +81,8 @@ enum AccountError: LocalizedError {
     case keychain(OSStatus)
     case notStored
     case writeFailed
+    case providerRunning(AccountProvider)
+    case damaged
 
     var errorDescription: String? {
         switch self {
@@ -89,6 +97,12 @@ enum AccountError: LocalizedError {
             return "That account is no longer in the keychain."
         case .writeFailed:
             return "The session file could not be replaced."
+        case .damaged:
+            return "The saved session is not usable. Sign in again and save it afresh."
+        case .providerRunning(let provider):
+            return "Quit \(provider.title) first. It holds this session in memory and "
+                + "writes it back on exit, which undoes the switch and can invalidate "
+                + "both sign ins."
         }
     }
 }
@@ -109,6 +123,7 @@ final class AccountService: ObservableObject {
     @Published var lastError: String = ""
 
     private let service = "io.macinotch.accounts"
+    private let legacyService = "io.macinotch.codex-accounts"
     private let metadataURL: URL
     private var watchdog: Timer?
     private var lastSeenStamp: [AccountProvider: Date] = [:]
@@ -169,8 +184,13 @@ final class AccountService: ObservableObject {
             .resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         if let match, let stamp, stamp != lastSeenStamp[provider] {
             lastSeenStamp[provider] = stamp
-            try? writeKeychain(id: match.id, envelope: envelope(for: provider,
-                                                               credential: data))
+            if (try? writeKeychain(id: match.id,
+                                   envelope: envelope(for: provider,
+                                                      credential: data))) != nil,
+               let index = accounts.firstIndex(where: { $0.id == match.id }) {
+                accounts[index].savedAt = Date()
+                save()
+            }
         }
     }
 
@@ -197,6 +217,7 @@ final class AccountService: ObservableObject {
             profile.label = name
             profile.email = identity.email
             profile.plan = identity.plan
+            profile.savedAt = Date()
             try writeKeychain(id: profile.id, envelope: box)
             accounts[existing] = profile
         } else {
@@ -207,7 +228,8 @@ final class AccountService: ObservableObject {
                                        plan: identity.plan,
                                        accountId: identity.accountId,
                                        addedAt: Date(),
-                                       lastUsedAt: Date())
+                                       lastUsedAt: Date(),
+                                       savedAt: Date())
             try writeKeychain(id: profile.id, envelope: box)
             accounts.append(profile)
         }
@@ -220,7 +242,13 @@ final class AccountService: ObservableObject {
             throw AccountError.notStored
         }
         let provider = accounts[index].provider
+        guard !Self.isRunning(provider) else {
+            throw AccountError.providerRunning(provider)
+        }
         guard let box = readKeychain(id: id) else { throw AccountError.notStored }
+        guard Self.looksUsable(provider, credential: box.credential) else {
+            throw AccountError.damaged
+        }
 
         if let current = try? Data(contentsOf: provider.credentialURL) {
             let identity = self.identity(provider, credential: current)
@@ -246,6 +274,45 @@ final class AccountService: ObservableObject {
         save()
         lastSeenStamp[provider] = nil
         refresh(provider)
+    }
+
+    func attemptActivate(_ id: String) {
+        do {
+            try activate(id)
+            lastError = ""
+        } catch {
+            lastError = error.localizedDescription
+            FileHandle.standardError.write(
+                Data("macinotch: account switch failed, \(error)\n".utf8))
+        }
+    }
+
+    func attemptCapture(_ provider: AccountProvider, label: String) {
+        do {
+            try capture(provider, label: label)
+            lastError = ""
+        } catch {
+            lastError = error.localizedDescription
+            FileHandle.standardError.write(
+                Data("macinotch: account save failed, \(error)\n".utf8))
+        }
+    }
+
+    static func looksUsable(_ provider: AccountProvider, credential: Data) -> Bool {
+        guard !credential.isEmpty,
+              let root = try? JSONSerialization.jsonObject(with: credential)
+                  as? [String: Any] else { return false }
+        guard provider == .codex else { return !root.isEmpty }
+        guard let tokens = root["tokens"] as? [String: Any] else { return false }
+        let refresh = tokens["refresh_token"] as? String ?? ""
+        return !refresh.isEmpty
+    }
+
+    static func isRunning(_ provider: AccountProvider) -> Bool {
+        switch provider {
+        case .codex: return PresenceService.processExists(named: "codex")
+        case .claude: return PresenceService.processExists(named: "claude")
+        }
     }
 
     func rename(_ id: String, to label: String) {
@@ -317,9 +384,9 @@ final class AccountService: ObservableObject {
                                                ofItemAtPath: url.path)
     }
 
-    private func query(id: String) -> [String: Any] {
+    private func query(id: String, in store: String? = nil) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
+         kSecAttrService as String: store ?? service,
          kSecAttrAccount as String: id,
          kSecAttrSynchronizable as String: false]
     }
@@ -343,16 +410,38 @@ final class AccountService: ObservableObject {
     }
 
     private func readKeychain(id: String) -> Envelope? {
-        var request = query(id: id)
+        if let data = rawKeychain(id: id, in: service) { return decode(data) }
+
+        guard let legacy = rawKeychain(id: id, in: legacyService) else { return nil }
+        let box = decode(legacy)
+        if let box { try? writeKeychain(id: id, envelope: box) }
+        return box
+    }
+
+    private func rawKeychain(id: String, in store: String) -> Data? {
+        var request = query(id: id, in: store)
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(request as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
+        guard SecItemCopyMatching(request as CFDictionary, &item) == errSecSuccess else {
+            return nil
+        }
+        return item as? Data
+    }
 
-        if let box = try? JSONDecoder().decode(Envelope.self, from: data) { return box }
+    private func decode(_ data: Data) -> Envelope? {
+        if let box = try? JSONDecoder().decode(Envelope.self, from: data),
+           !box.credential.isEmpty {
+            return box
+        }
+        guard (try? JSONSerialization.jsonObject(with: data)) != nil else { return nil }
         return Envelope(version: 0, credential: data, sidecar: nil)
+    }
+
+    func hasStoredSecret(_ id: String) -> Bool {
+        rawKeychain(id: id, in: service) != nil
+            || rawKeychain(id: id, in: legacyService) != nil
     }
 
     private func deleteKeychain(id: String) {
@@ -381,10 +470,11 @@ final class AccountService: ObservableObject {
         var accountId = ""
     }
 
-    func identity(_ provider: AccountProvider, credential: Data) -> Identity {
+    func identity(_ provider: AccountProvider, credential: Data,
+                  sidecar: Data? = nil) -> Identity {
         switch provider {
         case .codex: return Self.codexIdentity(credential)
-        case .claude: return Self.claudeIdentity()
+        case .claude: return Self.claudeIdentity(sidecar: sidecar)
         }
     }
 
@@ -408,10 +498,17 @@ final class AccountService: ObservableObject {
         return identity
     }
 
-    static func claudeIdentity() -> Identity {
+    static func claudeIdentity(sidecar: Data? = nil) -> Identity {
         var identity = Identity()
-        guard let url = AccountProvider.claude.sidecarURL,
-              let raw = try? Data(contentsOf: url),
+        let raw: Data?
+        if let sidecar {
+            raw = sidecar
+        } else if let url = AccountProvider.claude.sidecarURL {
+            raw = try? Data(contentsOf: url)
+        } else {
+            raw = nil
+        }
+        guard let raw,
               let root = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
               let account = root["oauthAccount"] as? [String: Any] else { return identity }
 

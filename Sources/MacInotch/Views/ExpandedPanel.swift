@@ -149,7 +149,7 @@ struct ExpandedPanel: View {
                 Spacer()
                 if switcher.hasSession(provider) && active == nil {
                     Button("Save current") {
-                        try? switcher.capture(provider, label: "")
+                        switcher.attemptCapture(provider, label: "")
                     }
                     .buttonStyle(.plain)
                     .font(.system(size: 10, weight: .semibold))
@@ -177,9 +177,10 @@ struct ExpandedPanel: View {
     private func accountRow(_ account: SavedAccount, isActive: Bool) -> some View {
         PanelRow(id: "account-\(account.id)",
                  title: account.label,
-                 subtitle: isActive ? "Signed in now" : account.subtitle,
+                 subtitle: isActive ? "Signed in now"
+                     : account.subtitle(showEmail: account.label != account.email),
                  theme: t,
-                 onTap: isActive ? nil : { try? switcher.activate(account.id) },
+                 onTap: isActive ? nil : { switcher.attemptActivate(account.id) },
                  leading: {
                      ZStack(alignment: .bottomTrailing) {
                          SourceIcon(source: account.provider.source, kind: .info,
@@ -194,9 +195,16 @@ struct ExpandedPanel: View {
                      }
                  },
                  trailing: {
-                     Text(isActive ? "in use" : "switch")
-                         .font(.system(size: 10, weight: .semibold))
-                         .foregroundStyle(isActive ? t.tertiary : t.accent)
+                     VStack(alignment: .trailing, spacing: 2) {
+                         Text(isActive ? "in use" : "switch")
+                             .font(.system(size: 10, weight: .semibold))
+                             .foregroundStyle(isActive ? t.tertiary : t.accent)
+                         if !isActive && account.isStale {
+                             Text("may ask to sign in")
+                                 .font(.system(size: 8.5))
+                                 .foregroundStyle(t.orange)
+                         }
+                     }
                  })
             .contextMenu {
                 Button("Forget this account") { switcher.forget(account.id) }
