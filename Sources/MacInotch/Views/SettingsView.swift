@@ -433,6 +433,20 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Keep awake") {
+                Picker("Coffee cup lasts", selection: $prefs.d.caffeineMinutes) {
+                    ForEach(CaffeineService.durations, id: \.minutes) { option in
+                        Text(option.label).tag(option.minutes)
+                    }
+                }
+                Toggle("Keep the display on too", isOn: $prefs.d.caffeineKeepsDisplayOn)
+                Text("Clicking the cup fills it and holds a power assertion for that "
+                     + "long, draining as the time runs down. Right click it to pick a "
+                     + "different length for one go. With the display off the machine "
+                     + "stays running while the screen is free to sleep.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Focus") {
                 Toggle("Focus row in the panel", isOn: $prefs.d.showFocusRow)
                 Picker("Toggle with shortcut", selection: $prefs.d.focusShortcut) {

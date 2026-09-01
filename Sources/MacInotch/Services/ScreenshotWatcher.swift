@@ -6,6 +6,7 @@ final class ScreenshotWatcher: @unchecked Sendable {
     private var timer: DispatchSourceTimer?
     private var seen: Set<String> = []
     private var startedAt = Date()
+    private var primed = false
     private let onCatch: @Sendable (String) -> Void
     private let enabled: @Sendable () -> Bool
 
@@ -25,19 +26,24 @@ final class ScreenshotWatcher: @unchecked Sendable {
 
     func start(interval: TimeInterval = 2) {
         startedAt = Date()
-        seen = Set(Self.candidates(in: Self.captureDirectory).map(\.path))
 
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + interval, repeating: interval)
         t.setEventHandler { [weak self] in self?.tick() }
         t.resume()
         timer = t
+
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.seen = Set(Self.candidates(in: Self.captureDirectory).map(\.path))
+            self.primed = true
+        }
     }
 
     func stop() { timer?.cancel(); timer = nil }
 
     private func tick() {
-        guard enabled() else { return }
+        guard enabled(), primed else { return }
         for url in Self.candidates(in: Self.captureDirectory) {
             guard !seen.contains(url.path) else { continue }
             seen.insert(url.path)

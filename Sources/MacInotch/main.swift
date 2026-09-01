@@ -69,6 +69,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                     return SnapshotStore.shared.getFans()
+                },
+                onCaffeine: { command in
+                    Task { @MainActor in
+                        let service = CaffeineService.shared
+                        if command["off"] != nil {
+                            service.stop()
+                        } else {
+                            service.start(minutes: command["minutes"] as? Double
+                                          ?? Prefs.shared.d.caffeineMinutes)
+                        }
+                    }
+                    return #"{"ok":true}"#
                 }
             )
             s.start()
@@ -320,6 +332,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 "reminders": CalendarService.shared.remindersAuthorized
                     ? "granted" : "not granted",
             ],
+            "caffeine": ["active": CaffeineService.shared.active,
+                         "detail": CaffeineService.shared.detail],
             "network": {
                 let n = NetworkService.shared.snapshot
                 return ["label": n.label, "ssid": n.ssid, "interface": n.interface,
@@ -579,6 +593,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 state.pinned = true
                 state.forceExpand()
                 AccountService.shared.requestActivate(id)
+            }
+        case "caffeine":
+            let query = components.queryItems ?? []
+            if query.contains(where: { $0.name == "off" }) {
+                CaffeineService.shared.stop()
+            } else {
+                let minutes = query.first { $0.name == "minutes" }?.value
+                    .flatMap(Double.init) ?? Prefs.shared.d.caffeineMinutes
+                CaffeineService.shared.start(minutes: minutes)
             }
         case "meeting":
             let on = components.queryItems?.first { $0.name == "on" }?.value

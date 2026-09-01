@@ -151,7 +151,7 @@ enum AccountError: LocalizedError {
     }
 }
 
-private struct Envelope: Codable {
+struct Envelope: Codable {
     var version: Int
     var credential: Data
     var sidecar: Data?
@@ -161,7 +161,7 @@ private struct Envelope: Codable {
 final class AccountService: ObservableObject {
     static let shared = AccountService()
 
-    @Published private(set) var accounts: [SavedAccount] = []
+    @Published fileprivate(set) var accounts: [SavedAccount] = []
     @Published private(set) var activeId: [AccountProvider: String] = [:]
     @Published private(set) var currentEmail: [AccountProvider: String] = [:]
     @Published var lastError: String = ""
@@ -236,12 +236,18 @@ final class AccountService: ObservableObject {
             .resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         if let match, let stamp, stamp != lastSeenStamp[provider] {
             lastSeenStamp[provider] = stamp
-            if (try? writeKeychain(id: match.id,
-                                   envelope: envelope(for: provider,
-                                                      credential: data))) != nil,
-               let index = accounts.firstIndex(where: { $0.id == match.id }) {
-                accounts[index].savedAt = Date()
-                save()
+            let box = envelope(for: provider, credential: data)
+            Task.detached(priority: .utility) {
+                let ok = (try? Self.writeKeychainOffMain(id: match.id,
+                                                         envelope: box)) != nil
+                guard ok else { return }
+                await MainActor.run {
+                    let store = AccountService.shared
+                    guard let index = store.accounts.firstIndex(
+                        where: { $0.id == match.id }) else { return }
+                    store.accounts[index].savedAt = Date()
+                    store.save()
+                }
             }
         }
     }
@@ -581,6 +587,30 @@ final class AccountService: ObservableObject {
          kSecAttrSynchronizable as String: false]
     }
 
+    nonisolated static func writeKeychainOffMain(id: String,
+                                                 envelope box: Envelope) throws {
+        guard let data = try? JSONEncoder().encode(box) else {
+            throw AccountError.unreadable
+        }
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "io.macinotch.accounts",
+            kSecAttrAccount as String: id,
+            kSecAttrSynchronizable as String: false,
+        ]
+        let status = SecItemUpdate(base as CFDictionary,
+                                   [kSecValueData as String: data] as CFDictionary)
+        if status == errSecSuccess { return }
+        if status != errSecItemNotFound { throw AccountError.keychain(status) }
+
+        var insert = base
+        insert[kSecValueData as String] = data
+        insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        insert[kSecAttrLabel as String] = "MacInotch saved account"
+        let added = SecItemAdd(insert as CFDictionary, nil)
+        guard added == errSecSuccess else { throw AccountError.keychain(added) }
+    }
+
     private func writeKeychain(id: String, envelope box: Envelope) throws {
         guard let data = try? JSONEncoder().encode(box) else {
             throw AccountError.unreadable
@@ -646,7 +676,7 @@ final class AccountService: ObservableObject {
         accounts = stored
     }
 
-    private func save() {
+    fileprivate func save() {
         accounts.sort { $0.addedAt < $1.addedAt }
         guard let data = try? JSONEncoder().encode(accounts) else { return }
         try? data.write(to: metadataURL, options: [.atomic])

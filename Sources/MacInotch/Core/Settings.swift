@@ -75,6 +75,8 @@ struct PrefsData: Codable, Equatable {
     var githubClientId       = ""
     var accountUsageSchema   = 0
     var calendarsExcluded: [String] = []
+    var caffeineMinutes      = 60.0
+    var caffeineKeepsDisplayOn = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

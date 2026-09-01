@@ -56,19 +56,28 @@ final class GitHubService: ObservableObject {
     @Published private(set) var verificationURL = ""
     @Published private(set) var signingIn = false
 
-    private let service = "io.macinotch.github"
-    private let account = "token"
+    nonisolated static let service = "io.macinotch.github"
+    nonisolated static let account = "token"
     private var timer: Timer?
     private var announced: Set<Int> = []
     private var primed = false
 
     private init() {}
 
-    var hasToken: Bool { token != nil }
+    @Published private(set) var hasToken = false
 
     func start() {
         timer?.invalidate()
-        guard hasToken else { return }
+        Task.detached(priority: .utility) {
+            let present = Self.readToken() != nil
+            await MainActor.run { GitHubService.shared.beginPolling(present) }
+        }
+    }
+
+    private func beginPolling(_ present: Bool) {
+        hasToken = present
+        guard present else { return }
+        timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in
             Task { @MainActor in await GitHubService.shared.refresh() }
         }
@@ -80,11 +89,13 @@ final class GitHubService: ObservableObject {
     func connect(token value: String) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        store(trimmed)
         lastError = ""
         primed = false
         announced.removeAll()
-        start()
+        Task.detached(priority: .utility) {
+            Self.storeToken(trimmed)
+            await MainActor.run { GitHubService.shared.start() }
+        }
     }
 
     var clientId: String {
@@ -192,34 +203,37 @@ final class GitHubService: ObservableObject {
     }
 
     func disconnect() {
-        SecItemDelete(query() as CFDictionary)
         stop()
+        hasToken = false
         snapshot = GitHubSnapshot()
         lastError = ""
+        Task.detached(priority: .utility) {
+            SecItemDelete(Self.query() as CFDictionary)
+        }
     }
 
-    private func query() -> [String: Any] {
+    nonisolated static func query() -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
          kSecAttrAccount as String: account,
          kSecAttrSynchronizable as String: false]
     }
 
-    private func store(_ value: String) {
+    nonisolated static func storeToken(_ value: String) {
         let data = Data(value.utf8)
-        let status = SecItemUpdate(query() as CFDictionary,
+        let status = SecItemUpdate(Self.query() as CFDictionary,
                                    [kSecValueData as String: data] as CFDictionary)
         guard status != errSecSuccess else { return }
 
-        var insert = query()
+        var insert = Self.query()
         insert[kSecValueData as String] = data
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         insert[kSecAttrLabel as String] = "MacInotch GitHub token"
         SecItemAdd(insert as CFDictionary, nil)
     }
 
-    private var token: String? {
-        var request = query()
+    nonisolated static func readToken() -> String? {
+        var request = Self.query()
         request[kSecReturnData as String] = true
         request[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
@@ -229,7 +243,8 @@ final class GitHubService: ObservableObject {
     }
 
     private func get(_ path: String) async -> Any? {
-        guard let token, let url = URL(string: "https://api.github.com" + path) else {
+        guard let token = await Self.tokenOffMain(),
+              let url = URL(string: "https://api.github.com" + path) else {
             return nil
         }
         var request = URLRequest(url: url)
@@ -248,6 +263,10 @@ final class GitHubService: ObservableObject {
             return nil
         }
         return try? JSONSerialization.jsonObject(with: data)
+    }
+
+    nonisolated static func tokenOffMain() async -> String? {
+        await Task.detached(priority: .utility) { Self.readToken() }.value
     }
 
     func refresh() async {
@@ -324,7 +343,8 @@ final class GitHubService: ObservableObject {
     }
 
     private func contributionCalendar() async -> (days: [ContributionDay], total: Int) {
-        guard let token, let url = URL(string: "https://api.github.com/graphql") else {
+        guard let token = await Self.tokenOffMain(),
+              let url = URL(string: "https://api.github.com/graphql") else {
             return ([], 0)
         }
         let query = """

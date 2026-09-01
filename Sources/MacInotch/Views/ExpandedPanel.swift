@@ -33,6 +33,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var focusState = FocusWatcher.shared
     @ObservedObject private var meeting = MeetingMode.shared
     @ObservedObject private var github = GitHubService.shared
+    @ObservedObject private var caffeine = CaffeineService.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -134,6 +135,34 @@ struct ExpandedPanel: View {
                     } else {
                         FocusController.run(p.focusShortcut)
                     }
+                }
+            }
+
+            Button {
+                SoundKit.tap()
+                caffeine.toggle()
+            } label: {
+                CoffeeCup(fill: caffeine.fill,
+                          active: caffeine.active,
+                          tint: t.orange,
+                          shell: caffeine.active
+                              ? (t.isDark ? Color.black : Color.white) : t.secondary)
+                    .frame(width: 17, height: 17)
+                    .padding(5.5)
+                    .background(Circle().fill(caffeine.active ? t.orange : t.control))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help(caffeine.active ? "Keeping awake, \(caffeine.remainingText)"
+                                  : "Keep this Mac awake")
+            .animation(.spring(response: 0.55, dampingFraction: 0.7), value: caffeine.fill)
+            .contextMenu {
+                ForEach(CaffeineService.durations, id: \.label) { option in
+                    Button(option.label) { caffeine.start(minutes: option.minutes) }
+                }
+                if caffeine.active {
+                    Divider()
+                    Button("Let it sleep again") { caffeine.stop() }
                 }
             }
 
@@ -1655,6 +1684,24 @@ struct ExpandedPanel: View {
                              trailing: { EmptyView() })
                 )))
             }
+        }
+
+        if caffeine.active {
+            out.append(RowSpec(id: "caffeine", view: AnyView(
+                PanelRow(id: "caffeine", title: "Keeping this Mac awake",
+                         subtitle: caffeine.detail, theme: t,
+                         onTap: { caffeine.stop() },
+                         leading: {
+                             CoffeeCup(fill: caffeine.fill, active: true,
+                                       tint: t.orange, shell: t.orange)
+                                 .frame(width: 26, height: 26)
+                         },
+                         trailing: {
+                             Text("Stop")
+                                 .font(.system(size: 10, weight: .semibold))
+                                 .foregroundStyle(t.accent)
+                         })
+            )))
         }
 
         if p.showFocusRow && focusState.available {

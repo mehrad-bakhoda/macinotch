@@ -45,7 +45,7 @@ struct NetworkSnapshot: Equatable {
 final class NetworkService: ObservableObject {
     static let shared = NetworkService()
 
-    @Published private(set) var snapshot = NetworkSnapshot()
+    @Published fileprivate(set) var snapshot = NetworkSnapshot()
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "io.macinotch.network")
@@ -78,7 +78,7 @@ final class NetworkService: ObservableObject {
         monitor.start(queue: queue)
 
         timer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { _ in
-            Task { @MainActor in NetworkService.shared.refreshSlowFields() }
+            NetworkService.shared.refreshSlowFields()
         }
         refreshSlowFields()
     }
@@ -101,14 +101,22 @@ final class NetworkService: ObservableObject {
         refreshSlowFields()
     }
 
-    private func refreshSlowFields() {
-        var next = snapshot
-        next.ssid = CWWiFiClient.shared().interface()?.ssid() ?? ""
-        next.vpnName = Self.activeVPN()
-        if next != snapshot { snapshot = next }
+    nonisolated func refreshSlowFields() {
+        Task.detached(priority: .utility) {
+            let ssid = CWWiFiClient.shared().interface()?.ssid() ?? ""
+            let vpn = Self.activeVPN()
+            await MainActor.run {
+                var next = NetworkService.shared.snapshot
+                next.ssid = ssid
+                next.vpnName = vpn
+                if next != NetworkService.shared.snapshot {
+                    NetworkService.shared.snapshot = next
+                }
+            }
+        }
     }
 
-    static func activeVPN() -> String {
+    nonisolated static func activeVPN() -> String {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/sbin/scutil")
         task.arguments = ["--nc", "list"]

@@ -9,15 +9,18 @@ final class NotchServer: @unchecked Sendable {
     private let stateJSON: @Sendable () -> String
     private let onPrefsPatch: @Sendable (Data) -> Void
     private let onFanCommand: @Sendable ([String: Any]) -> String
+    private let onCaffeine: @Sendable ([String: Any]) -> String
 
     init(onPayload: @escaping @Sendable (NotchPayload) -> Void,
          stateJSON: @escaping @Sendable () -> String = { "{}" },
          onPrefsPatch: @escaping @Sendable (Data) -> Void = { _ in },
-         onFanCommand: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" }) {
+         onFanCommand: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" },
+         onCaffeine: @escaping @Sendable ([String: Any]) -> String = { _ in "{}" }) {
         self.onPayload = onPayload
         self.stateJSON = stateJSON
         self.onPrefsPatch = onPrefsPatch
         self.onFanCommand = onFanCommand
+        self.onCaffeine = onCaffeine
     }
 
     func start() {
@@ -111,6 +114,23 @@ final class NotchServer: @unchecked Sendable {
                 }
             }
             respond(conn, 200, onFanCommand(command))
+
+        case "/caffeine":
+            var command: [String: Any] = [:]
+            if !req.body.isEmpty,
+               let parsed = try? JSONSerialization.jsonObject(with: req.body)
+                   as? [String: Any] {
+                command = parsed
+            } else if let comps = URLComponents(string: "http://localhost" + req.path) {
+                for item in comps.queryItems ?? [] {
+                    if let number = item.value.flatMap(Double.init) {
+                        command[item.name] = number
+                    } else {
+                        command[item.name] = item.value ?? ""
+                    }
+                }
+            }
+            respond(conn, 200, onCaffeine(command))
 
         case "/prefs":
 

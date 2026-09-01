@@ -52,7 +52,9 @@ Contents, Pull requests and Actions, all read only.
 ### Quick actions
 
 A row of buttons at the top of the panel toggles meeting mode, holds
-notifications, switches Focus and starts a screen recording. The same row
+notifications, switches Focus, starts a screen recording, and keeps the Mac
+awake behind a coffee cup that fills and steams while it holds sleep off,
+draining as the time runs down. The same row
 connects your calendar and GitHub, so neither needs a trip to Settings.
 
 ### Tabs
@@ -177,6 +179,7 @@ curl -s localhost:9977/state  | jq     # vitals, temps, presence, dates, usage
 curl -s localhost:9977/prefs  | jq     # every setting
 curl -s localhost:9977/prefs  -d '{"appearance":"light"}'
 curl -s localhost:9977/fan    -d '{"percent":1.0,"minutes":5}'
+curl -s localhost:9977/caffeine -d '{"minutes":60}'
 curl -s localhost:9977/health
 ```
 
@@ -202,6 +205,8 @@ macinotch://notify?title=Hello&kind=success&source=claude
 macinotch://timer?minutes=25
 macinotch://timer?pomodoro=1
 macinotch://fan?percent=1.0&minutes=5
+macinotch://caffeine?minutes=60
+macinotch://caffeine?off=1
 macinotch://menubar
 macinotch://pin
 macinotch://mute?minutes=60
@@ -371,6 +376,12 @@ request once, and afterwards the call returns immediately with no dialog, which
 is indistinguishable from a button that does nothing. Anywhere access can be
 declined, the interface has to notice and send the reader to the privacy pane
 instead of asking again.
+
+**The keychain can block the main thread.** Reading a saved credential during
+launch is enough to hang the application outright: if macOS decides to ask
+about keychain access, the prompt cannot be presented while the app is still
+starting, and the launch never completes. Keychain work belongs off the main
+thread.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.
