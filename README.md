@@ -366,6 +366,12 @@ attributed by reading it. Anything measured before the most recent account
 switch is ignored instead, which is the only reliable way to keep two accounts
 apart from files that do not distinguish them.
 
+**A declined permission cannot be asked for twice.** macOS presents each
+request once, and afterwards the call returns immediately with no dialog, which
+is indistinguishable from a button that does nothing. Anywhere access can be
+declined, the interface has to notice and send the reader to the privacy pane
+instead of asking again.
+
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.
 

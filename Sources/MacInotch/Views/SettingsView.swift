@@ -346,12 +346,14 @@ struct SettingsView: View {
                     .disabled(!prefs.d.suggestMeetingMode)
                 HStack {
                     Button(calendar.authorized ? "Refresh calendars"
-                                               : "Connect calendar and reminders") {
+                           : calendar.denied ? "Open Privacy Settings"
+                           : "Connect calendar and reminders") {
                         calendar.authorized ? calendar.refreshSources()
                                             : calendar.requestAccess()
                     }
                     .controlSize(.small)
-                    Text(calendar.authorized ? "Connected" : "Not connected")
+                    Text(calendar.authorized ? "Connected"
+                         : calendar.denied ? "Access was declined" : "Not connected")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("Add a Google account") {
@@ -362,6 +364,30 @@ struct SettingsView: View {
                         }
                     }
                     .controlSize(.small)
+                }
+
+                if calendar.denied {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("macOS asks only once, so declining is final and the "
+                             + "button above can no longer produce a prompt. Turn "
+                             + "MacInotch on under Privacy and Security, Calendars.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("To be asked again instead, run this in Terminal and "
+                             + "reopen MacInotch:")
+                            .font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Text("tccutil reset Calendar io.macinotch.app")
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                            Button("Copy") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(
+                                    "tccutil reset Calendar io.macinotch.app",
+                                    forType: .string)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
                 }
 
                 if calendar.authorized && !calendar.sources.isEmpty {

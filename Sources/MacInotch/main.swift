@@ -314,6 +314,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                  "messages": $0.messages, "tokens": $0.tokens,
                  "model": $0.model, "ago": $0.ago]
             },
+            "calendarAuth": [
+                "events": CalendarService.shared.authorized ? "granted"
+                    : (CalendarService.shared.denied ? "denied" : "not asked"),
+                "reminders": CalendarService.shared.remindersAuthorized
+                    ? "granted" : "not granted",
+            ],
             "network": {
                 let n = NetworkService.shared.snapshot
                 return ["label": n.label, "ssid": n.ssid, "interface": n.interface,

@@ -146,7 +146,9 @@ struct ExpandedPanel: View {
             Divider().frame(height: 16)
 
             QuickButton(symbol: "calendar", label: calendar.authorized
-                        ? "Calendar connected" : "Connect calendar",
+                        ? "Calendar connected"
+                        : calendar.denied ? "Access declined, open Privacy Settings"
+                        : "Connect calendar",
                         tint: t.teal, on: calendar.authorized,
                         dim: !calendar.authorized, theme: t) {
                 if calendar.authorized {

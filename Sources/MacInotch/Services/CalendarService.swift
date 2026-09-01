@@ -90,7 +90,22 @@ final class CalendarService: ObservableObject {
 
     func stop() { timer?.invalidate(); timer = nil }
 
+    static func openPrivacySettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars",
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+                + "?Privacy_Calendars",
+        ]
+        for raw in candidates {
+            if let url = URL(string: raw), NSWorkspace.shared.open(url) { return }
+        }
+    }
+
     func requestAccess() {
+        guard !denied else {
+            Self.openPrivacySettings()
+            return
+        }
         store.requestFullAccessToEvents { [weak self] granted, _ in
             Task { @MainActor in
                 guard let self else { return }
