@@ -12,6 +12,7 @@ final class SettingsNav: ObservableObject {
     @Published var newAccountLabel: String = ""
     @Published var shortcutNames: [String] = []
     @Published var githubToken: String = ""
+    @Published var connectingGitHub = false
 }
 
 struct SettingsView: View {
@@ -249,6 +250,7 @@ struct SettingsView: View {
             }
 
             Section("GitHub") {
+                Toggle("Quick actions row in the panel", isOn: $prefs.d.showQuickBar)
                 Toggle("GitHub row in the panel", isOn: $prefs.d.showGitHub)
                 Toggle("Alert when a workflow fails", isOn: $prefs.d.alertWorkflowFailure)
 

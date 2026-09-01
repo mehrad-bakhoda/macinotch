@@ -36,6 +36,12 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Network** | Wi-Fi, VPN, and whether the connection is metered before you start a large download |
 | **Activity** | Recent notifications with optional action buttons |
 
+### Quick actions
+
+A row of buttons at the top of the panel toggles meeting mode, holds
+notifications, switches Focus and starts a screen recording. The same row
+connects your calendar and GitHub, so neither needs a trip to Settings.
+
 ### Tabs
 
 - **Dock**, a file shelf and clipboard history. Drag files onto the notch to

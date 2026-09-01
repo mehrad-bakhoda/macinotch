@@ -39,6 +39,8 @@ struct ExpandedPanel: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 if p.shelfEnabled { tabBar }
+                if p.showQuickBar { quickBar }
+                if nav.connectingGitHub { githubConnect }
                 switch state.panelTab {
                 case .home:
                     hero
@@ -70,6 +72,182 @@ struct ExpandedPanel: View {
     }
     private var showsTemp: Bool { p.showTemperature && state.temps.available }
     private var showsFans: Bool { p.showFans && !state.fans.fans.isEmpty }
+    private struct QuickButton: View {
+        var symbol: String
+        var label: String
+        var tint: Color
+        var on: Bool
+        var dim: Bool
+        var theme: Theme
+        var action: () -> Void
+
+        var body: some View {
+            Button {
+                SoundKit.tap()
+                action()
+            } label: {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(on ? (theme.isDark ? Color.black : Color.white)
+                                        : (dim ? theme.tertiary : theme.secondary))
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle().fill(on ? tint : theme.control)
+                            .opacity(on ? 1 : (dim ? 0.45 : 1))
+                    )
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help(label)
+        }
+    }
+
+    private var quickBar: some View {
+        HStack(spacing: 7) {
+            QuickButton(symbol: "video.fill", label: "Meeting mode",
+                        tint: t.purple, on: meeting.active, dim: false, theme: t) {
+                meeting.toggle()
+            }
+
+            QuickButton(symbol: state.isMuted ? "bell.slash.fill" : "bell.fill",
+                        label: state.isMuted ? "Notifications held" : "Hold notifications",
+                        tint: t.orange, on: state.isMuted, dim: false, theme: t) {
+                state.isMuted ? state.unmute() : state.mute(minutes: 60)
+            }
+
+            if focusState.available {
+                QuickButton(symbol: focusState.active ? "moon.fill" : "moon",
+                            label: focusState.active
+                                ? (focusState.modeName ?? "Focus on") : "Toggle Focus",
+                            tint: t.purple, on: focusState.active,
+                            dim: p.focusShortcut.isEmpty, theme: t) {
+                    if p.focusShortcut.isEmpty {
+                        SettingsNav.shared.tab = .general
+                        SettingsWindow.shared.show()
+                    } else {
+                        FocusController.run(p.focusShortcut)
+                    }
+                }
+            }
+
+            QuickButton(symbol: capture.recording ? "stop.fill" : "record.circle",
+                        label: capture.recording ? "Stop recording" : "Record screen",
+                        tint: t.red, on: capture.recording, dim: false, theme: t) {
+                capture.toggle()
+            }
+
+            Divider().frame(height: 16)
+
+            QuickButton(symbol: "calendar", label: calendar.authorized
+                        ? "Calendar connected" : "Connect calendar",
+                        tint: t.teal, on: calendar.authorized,
+                        dim: !calendar.authorized, theme: t) {
+                if calendar.authorized {
+                    if let url = URL(string: "x-apple-calendar://") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } else {
+                    calendar.requestAccess()
+                }
+            }
+            .contextMenu {
+                Button("Add a Google or other account") {
+                    if let url = URL(string:
+                        "x-apple.systempreferences:com.apple.Internet-Accounts-Settings"
+                        + ".extension") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Button("Reminders access") { calendar.requestReminderAccess() }
+            }
+
+            QuickButton(symbol: "chevron.left.forwardslash.chevron.right",
+                        label: github.snapshot.connected
+                            ? "GitHub as \(github.snapshot.login)" : "Connect GitHub",
+                        tint: t.teal, on: github.snapshot.connected,
+                        dim: !github.snapshot.connected, theme: t) {
+                if github.snapshot.connected {
+                    if let url = URL(string: "https://github.com/\(github.snapshot.login)") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } else {
+                    nav.connectingGitHub.toggle()
+                    if nav.connectingGitHub {
+                        state.pinned = true
+                        NSApp.activate(ignoringOtherApps: true)
+                    } else {
+                        state.pinned = false
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var githubConnect: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Paste a GitHub token")
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(t.primary)
+
+            HStack(spacing: 6) {
+                SecureField("ghp_ or github_pat_", text: $nav.githubToken)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, design: .monospaced))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(t.wellFill))
+
+                Button {
+                    github.connect(token: nav.githubToken)
+                    nav.githubToken = ""
+                    nav.connectingGitHub = false
+                    state.pinned = false
+                } label: {
+                    Text("Connect")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(t.isDark ? Color.black : Color.white)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(t.accent))
+                }
+                .buttonStyle(.plain)
+                .disabled(nav.githubToken.isEmpty)
+            }
+
+            HStack(spacing: 8) {
+                Button("Create a token") {
+                    if let url = URL(string:
+                        "https://github.com/settings/personal-access-tokens/new") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(t.accent)
+
+                Button("Cancel") {
+                    nav.githubToken = ""
+                    nav.connectingGitHub = false
+                    state.pinned = false
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 10))
+                .foregroundStyle(t.tertiary)
+            }
+
+            Text("Needs read access to your repositories plus Actions read. It is "
+                 + "kept in your keychain for this device only and is sent nowhere "
+                 + "except api.github.com.")
+                .font(.system(size: 9.5))
+                .foregroundStyle(t.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 11).fill(t.wellFill))
+    }
+
     private var tabBar: some View {
         HStack(spacing: 4) {
             ForEach(visibleTabs) { tab in

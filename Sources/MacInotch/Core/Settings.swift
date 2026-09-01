@@ -71,6 +71,7 @@ struct PrefsData: Codable, Equatable {
     var showReminders        = true
     var alertWorkflowFailure = true
     var showGitHub           = true
+    var showQuickBar         = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

@@ -1,44 +1,31 @@
-The notch now watches the machine, your calendar, and your repositories.
+Quick actions and connecting accounts, without opening Settings.
 
-### It tells you when something is wrong
+### A row of actions in the panel
 
-The vitals were already sampled every few seconds and thrown away. Now a disk
-filling up, a process pinning a core for two minutes, thermal throttling, and
-a failing battery each warn once, and rearm only after the condition clears.
+Meeting mode, holding notifications, Focus, and screen recording are now
+buttons at the top of the panel. Each lights up when it is on and turns off
+with the same click, so going quiet for a call and coming back out of it is
+two taps in the place you were already looking.
 
-Network state is new. The path monitor reports whether a connection is metered
-or constrained, which is what you want to know before starting a large
-download, and connected VPNs are read from the system configuration.
+### Connecting is one click
 
-### Meetings
+The calendar and GitHub buttons sit in the same row and show whether they are
+connected. Tapping the calendar asks macOS for access. Google, Exchange and
+other calendars come from the accounts already on the machine, so the button's
+menu opens Internet Accounts to add one.
 
-The calendar now lists today's events and your open reminders, which needs the
-separate reminders permission. When an event with a join link starts, the
-notch offers to join it or to go quiet for its duration.
+Tapping GitHub opens a field to paste a token, with a link to the page that
+creates one. The panel pins itself while the field is open so it cannot
+collapse mid paste.
 
-Meeting mode mutes system audio and holds notifications until the event ends,
-then puts both back. It leaves audio alone if it was already muted, so it
-cannot unmute something you silenced yourself. It is offered once per event
-rather than imposed.
+### Where the token goes
 
-### GitHub
-
-Connect a personal access token and the notch shows today's pushes, pull
-requests you opened, and reviews waiting on you. A failing workflow raises a
-notification with a link to the run.
-
-The token goes straight into your keychain, marked for this device only. It is
-never written to disk, never leaves the machine except to api.github.com, and
-never appears on the local endpoint.
-
-### Focus and recording
-
-Focus state was already read from the system but only shown as a dot. It is
-now a row naming the mode, and tapping it runs a Shortcut you choose, because
-macOS lets you observe a Focus but not set one.
-
-Screen recordings already landed in the shelf once they existed. Starting one
-is now a button in the Dock tab that shows elapsed time and files the result.
+Straight into your login keychain, marked accessible only when unlocked and
+only on this device. It is never synced, never written to preferences or any
+file, never printed, and never appears on the local endpoint. The field is a
+secure one and is cleared the moment it is used. Requests go to api.github.com
+and nowhere else. Connecting again after a restart is not necessary; the
+keychain entry is read at launch.
 
 ### Install
 
