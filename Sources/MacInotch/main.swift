@@ -163,6 +163,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             })
         sessionService.start()
         AccountService.shared.start()
+        NetworkService.shared.start()
+        AlertService.shared.start()
 
         let gateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
             [weak self] _ in
@@ -309,6 +311,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                  "messages": $0.messages, "tokens": $0.tokens,
                  "model": $0.model, "ago": $0.ago]
             },
+            "network": {
+                let n = NetworkService.shared.snapshot
+                return ["label": n.label, "ssid": n.ssid, "interface": n.interface,
+                        "connected": n.connected, "expensive": n.expensive,
+                        "constrained": n.constrained, "vpn": n.vpnName]
+            }(),
             "tempSoC": (s.temps.soc * 10).rounded() / 10,
             "tempSoCMax": (s.temps.socMax * 10).rounded() / 10,
             "tempBattery": (s.temps.battery * 10).rounded() / 10,

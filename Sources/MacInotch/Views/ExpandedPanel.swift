@@ -17,6 +17,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var bluetooth = BluetoothBatteryService.shared
     @ObservedObject private var notes = NotesStore.shared
     @ObservedObject private var switcher = AccountService.shared
+    @ObservedObject private var network = NetworkService.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -1174,6 +1175,35 @@ struct ExpandedPanel: View {
                     out.append(RowSpec(id: "usage-codex",
                                        view: AnyView(tallyRow(.chatgpt, tally))))
                 }
+            }
+        }
+
+        if p.alertNetwork {
+            let net = network.snapshot
+            if net.onVPN || net.expensive || net.constrained || !net.connected {
+                out.append(RowSpec(id: "network", view: AnyView(
+                    PanelRow(id: "network", title: net.label,
+                             subtitle: net.detail.isEmpty ? "Connected" : net.detail,
+                             theme: t, onTap: nil,
+                             leading: {
+                                 IconBadge(symbol: net.symbol,
+                                           tint: net.connected
+                                               ? (net.expensive ? t.orange : t.teal)
+                                               : t.red,
+                                           theme: t)
+                             },
+                             trailing: {
+                                 if net.onVPN {
+                                     Text("VPN")
+                                         .font(.system(size: 9, weight: .bold))
+                                         .foregroundStyle(t.isDark ? Color.black
+                                                                   : Color.white)
+                                         .padding(.horizontal, 5)
+                                         .padding(.vertical, 1.5)
+                                         .background(Capsule().fill(t.green))
+                                 }
+                             })
+                )))
             }
         }
 

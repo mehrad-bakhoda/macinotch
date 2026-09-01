@@ -58,6 +58,11 @@ struct PrefsData: Codable, Equatable {
     var sessionsActiveOnly   = false
     var showAccounts         = true
     var notifyOnUsageThreshold = true
+    var alertDisk            = true
+    var alertRunaway         = true
+    var alertThermal         = true
+    var alertBattery         = true
+    var alertNetwork         = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

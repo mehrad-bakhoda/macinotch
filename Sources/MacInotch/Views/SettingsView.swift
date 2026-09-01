@@ -245,6 +245,17 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Alerts") {
+                Toggle("Disk filling up", isOn: $prefs.d.alertDisk)
+                Toggle("A process pinning the CPU", isOn: $prefs.d.alertRunaway)
+                Toggle("Thermal throttling", isOn: $prefs.d.alertThermal)
+                Toggle("Battery health and low battery", isOn: $prefs.d.alertBattery)
+                Toggle("Network, VPN and hotspot changes", isOn: $prefs.d.alertNetwork)
+                Text("Each warning fires once and rearms only after the condition "
+                     + "clears, so a full disk does not chime every minute.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Facts") {
                 Toggle("Year progress", isOn: $prefs.d.showYearProgress)
                 Toggle("Week number", isOn: $prefs.d.showWeekNumber)
