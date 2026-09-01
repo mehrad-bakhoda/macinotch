@@ -45,6 +45,9 @@ struct PrefsData: Codable, Equatable {
     var batteryLimitNudge = true
     var batteryLimitPercent = 80.0
     var notesPath       = ""
+    var meetingLocale   = "en-US"
+    var meetingCapturesSystemAudio = true
+    var meetingAutoRecord = false
     var showNotes       = true
     var menuBarHiding   = false
     var menuBarHidden   = false

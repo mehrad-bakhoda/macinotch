@@ -31,6 +31,7 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Media** | Spotify and Apple Music with artwork, scrubbing, transport and volume |
 | **Calendar** | Next event with a countdown and a join button for Zoom, Meet, Teams, Webex, Whereby, Around and Jitsi |
 | **AI usage** | Codex limits as Codex itself reports them, five hour and weekly, with the pace you are burning them and when you will run out. Warns at 80% and 95%, and offers another saved account when one has room. Claude Code publishes no quota, so it shows a local token tally instead |
+| **Meeting notes** | Records a call, transcribes it with the speech model built into macOS and writes it up with the on device language model, saved as a note. Nothing leaves the Mac |
 | **Meetings** | Today's events and open reminders, with a join button and an offer to mute audio and hold notifications for the duration |
 | **GitHub** | Today's pushes, pull requests opened and reviews waiting on you, with a notification when a workflow fails |
 | **Network** | Wi-Fi, VPN, and whether the connection is metered before you start a large download |
@@ -271,6 +272,7 @@ setup guide walks through each one.
 | Notification mirror, Focus awareness | Full Disk Access |
 | Reminders | Reminders access |
 | Mail | An account in Mail, and Automation access to it |
+| Meeting notes | Microphone, and Screen Recording to capture the other side |
 | Fan control | An administrator password once, to install the helper |
 | Saved accounts | Keychain access, granted on first use |
 | Everything else | Nothing |

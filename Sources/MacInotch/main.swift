@@ -623,6 +623,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     .flatMap(Double.init) ?? Prefs.shared.d.caffeineMinutes
                 CaffeineService.shared.start(minutes: minutes)
             }
+        case "record":
+            let off = components.queryItems?.contains { $0.name == "off" } ?? false
+            if off {
+                Task { @MainActor in await MeetingRecorder.shared.stop() }
+            } else {
+                let name = CalendarService.shared.next?.title ?? "Meeting"
+                Task { @MainActor in
+                    await MeetingRecorder.shared.start(title: name)
+                }
+            }
         case "meeting":
             let on = components.queryItems?.first { $0.name == "on" }?.value
             if on == "0" { MeetingMode.shared.disable() }

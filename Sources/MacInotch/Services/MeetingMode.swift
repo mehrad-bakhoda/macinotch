@@ -49,8 +49,16 @@ final class MeetingMode: ObservableObject {
         }
         actions.append(NotchAction(label: "Meeting mode",
                                    url: "macinotch://meeting?on=1"))
+        if MeetingRecorder.available {
+            actions.append(NotchAction(label: "Record it",
+                                       url: "macinotch://record?on=1"))
+        }
         p.actions = actions
         NotchState.shared.handle(p)
+
+        if Prefs.shared.d.meetingAutoRecord {
+            Task { await MeetingRecorder.shared.start(title: event.title) }
+        }
     }
 
     func enable(until end: Date?) {
@@ -69,6 +77,9 @@ final class MeetingMode: ObservableObject {
     }
 
     func disable() {
+        if MeetingRecorder.shared.recording {
+            Task { await MeetingRecorder.shared.stop() }
+        }
         guard active else { return }
         active = false
         endsAt = nil

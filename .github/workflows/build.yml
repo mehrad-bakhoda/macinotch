@@ -62,6 +62,10 @@ jobs:
             <string>MacInotch shows your next event and a join button in the notch.</string>
             <key>NSRemindersFullAccessUsageDescription</key>
             <string>MacInotch shows your reminders alongside your next event.</string>
+            <key>NSMicrophoneUsageDescription</key>
+            <string>MacInotch records a meeting so it can transcribe and summarise it on this Mac.</string>
+            <key>NSSpeechRecognitionUsageDescription</key>
+            <string>MacInotch transcribes meeting audio using the speech model built into macOS.</string>
             <key>NSAppleEventsUsageDescription</key>
             <string>MacInotch reads the currently playing track from Spotify and Music.</string>
           </dict>

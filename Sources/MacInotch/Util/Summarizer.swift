@@ -127,6 +127,29 @@ actor Summarizer {
         return nil
     }
 
+    func meetingNotes(title: String, transcript: String) async -> String {
+        #if canImport(FoundationModels)
+        if #available(macOS 26.0, *) {
+            guard case .available = SystemLanguageModel.default.availability else {
+                return ""
+            }
+            let session = LanguageModelSession(instructions: """
+            You write up a meeting from its transcript, for someone who was there \
+            and wants to remember it. Use three short headings: Decisions, Actions, \
+            Open questions. Under each, plain bullet points. Name who owes what \
+            where the transcript says so, and write nothing under a heading that \
+            the transcript does not support. A transcript is imperfect, so do not \
+            invent a name, a date or a figure that is not clearly there. Leave a \
+            heading empty rather than filling it.
+            """)
+            let prompt = "Meeting: \(title)\n\nTranscript:\n\(transcript.prefix(8000))"
+            guard let response = try? await session.respond(to: prompt) else { return "" }
+            return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        #endif
+        return ""
+    }
+
     func replyDraft(subject: String, body: String, sender: String) async -> String {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {

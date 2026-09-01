@@ -474,6 +474,33 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Meeting notes") {
+                Toggle("Start recording when a call begins",
+                       isOn: $prefs.d.meetingAutoRecord)
+                Toggle("Capture the other side as well",
+                       isOn: $prefs.d.meetingCapturesSystemAudio)
+                Picker("Spoken language", selection: $prefs.d.meetingLocale) {
+                    Text("English").tag("en-US")
+                    Text("British English").tag("en-GB")
+                    Text("Persian").tag("fa-IR")
+                    Text("German").tag("de-DE")
+                    Text("French").tag("fr-FR")
+                    Text("Spanish").tag("es-ES")
+                    Text("Arabic").tag("ar-SA")
+                }
+                Text(MeetingRecorder.available
+                     ? "Recording is transcribed by the speech model built into macOS "
+                       + "and written up by the on device language model, then saved "
+                       + "with your notes. Nothing is uploaded and no account is used."
+                     : "This needs macOS 26 or later.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Your microphone is always captured. Capturing the other side "
+                     + "records the audio your Mac is playing, which needs Screen "
+                     + "Recording permission. Recording a call may need everyone's "
+                     + "agreement where you are.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Focus") {
                 Toggle("Focus row in the panel", isOn: $prefs.d.showFocusRow)
                 Picker("Toggle with shortcut", selection: $prefs.d.focusShortcut) {

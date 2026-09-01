@@ -35,6 +35,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var github = GitHubService.shared
     @ObservedObject private var caffeine = CaffeineService.shared
     @ObservedObject private var mail = MailService.shared
+    @ObservedObject private var recorder = MeetingRecorder.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -115,9 +116,27 @@ struct ExpandedPanel: View {
 
     private var quickBar: some View {
         HStack(spacing: 7) {
-            QuickButton(symbol: "video.fill", label: "Meeting mode",
-                        tint: t.purple, on: meeting.active, dim: false, theme: t) {
+            QuickButton(symbol: recorder.recording ? "waveform" : "video.fill",
+                        label: recorder.recording
+                            ? "Recording, \(recorder.elapsed)" : "Meeting mode",
+                        tint: recorder.recording ? t.red : t.purple,
+                        on: meeting.active || recorder.recording,
+                        dim: false, theme: t) {
                 meeting.toggle()
+            }
+            .contextMenu {
+                if MeetingRecorder.available {
+                    if recorder.recording {
+                        Button("Stop and write it up") {
+                            Task { await recorder.stop() }
+                        }
+                    } else {
+                        Button("Record and write it up") {
+                            let name = calendar.next?.title ?? "Meeting"
+                            Task { await recorder.start(title: name) }
+                        }
+                    }
+                }
             }
 
             QuickButton(symbol: state.isMuted ? "bell.slash.fill" : "bell.fill",
@@ -1926,6 +1945,46 @@ struct ExpandedPanel: View {
                              trailing: { EmptyView() })
                 )))
             }
+        }
+
+        if recorder.recording || recorder.working {
+            out.append(RowSpec(id: "recorder", view: AnyView(
+                PanelRow(id: "recorder",
+                         title: recorder.working ? "Writing up the meeting"
+                                                 : "Recording, \(recorder.elapsed)",
+                         subtitle: recorder.working
+                             ? "Transcribed and summarised on this Mac"
+                             : (recorder.status.isEmpty ? "Listening" : recorder.status),
+                         theme: t,
+                         onTap: recorder.working ? nil : {
+                             Task { await recorder.stop() }
+                         },
+                         leading: {
+                             IconBadge(symbol: recorder.working
+                                       ? "text.append" : "waveform",
+                                       tint: recorder.working ? t.accent : t.red,
+                                       theme: t)
+                         },
+                         trailing: {
+                             if !recorder.working {
+                                 Text("Stop")
+                                     .font(.system(size: 10, weight: .semibold))
+                                     .foregroundStyle(t.accent)
+                             }
+                         })
+            )))
+        }
+
+        if !recorder.lastError.isEmpty && !recorder.recording {
+            out.append(RowSpec(id: "recorder-error", view: AnyView(
+                PanelRow(id: "recorder-error", title: "Recording did not finish",
+                         subtitle: recorder.lastError, theme: t, onTap: nil,
+                         leading: {
+                             IconBadge(symbol: "exclamationmark.triangle",
+                                       tint: t.orange, theme: t)
+                         },
+                         trailing: { EmptyView() })
+            )))
         }
 
         if meeting.active {
