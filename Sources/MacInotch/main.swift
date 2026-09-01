@@ -97,10 +97,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             onUpdate: { snap in
                 Task { @MainActor in
                     if snap != NotchState.shared.usage { NotchState.shared.usage = snap }
+                    if let limits = snap.codexLimits {
+                        AccountService.shared.recordUsage(
+                            .codex,
+                            percent: limits.primary.usedPercent,
+                            resetsAt: limits.primary.resetsAt)
+                    }
                 }
             },
             onReset: { provider, window in
                 Task { @MainActor in Self.announceUsageReset(provider, window) }
+            },
+            onThreshold: { window, mark, projection in
+                Task { @MainActor in Self.announceThreshold(window, mark, projection) }
             })
         usage.start()
 
@@ -289,6 +298,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                      "resetsIn": $0.primary.remainingText,
                      "weeklyPercent": $0.secondary?.usedPercent as Any,
                      "weeklyResetsIn": $0.secondary?.remainingText as Any,
+                     "burnPercentPerHour": $0.projection.map {
+                         ($0.percentPerHour * 10).rounded() / 10 } as Any,
+                     "projection": $0.projection?.text as Any,
                      "source": "reported by codex"] } as Any,
             ],
             "sessions": s.sessions.map {
@@ -364,6 +376,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         p.title = "Codex \(window.label) limit reset"
         p.body = "Back to \(Int(window.usedPercent))% used, next reset in \(window.remainingText)"
         p.timeout = 8
+        p.sound = true
+        NotchState.shared.handle(p)
+    }
+
+    static func announceThreshold(_ window: RateWindow, _ mark: Int,
+                                  _ projection: RateProjection?) {
+        guard Prefs.shared.d.notifyOnUsageThreshold else { return }
+
+        var p = NotchPayload()
+        p.source = NotchSource.chatgpt.rawValue
+        p.kind = mark >= 95 ? "warning" : "info"
+        p.key = "usage-threshold-codex"
+        p.title = "Codex \(Int(window.usedPercent))% of the \(window.label) limit"
+
+        var lines = ["resets in \(window.remainingText)"]
+        if let text = projection?.text { lines.append(text) }
+        p.body = lines.joined(separator: ", ")
+
+        if let spare = AccountService.shared.alternative(to: .codex),
+           let usage = spare.usageText {
+            p.body = (p.body ?? "") + ". \(spare.label) is \(usage)"
+            p.actions = [NotchAction(label: "Switch to \(spare.label)",
+                                     url: "macinotch://switch?account=\(spare.id)")]
+        }
+
+        p.timeout = mark >= 95 ? 14 : 10
         p.sound = true
         NotchState.shared.handle(p)
     }
@@ -516,6 +554,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 .first(where: { $0.name == "section" })?.value,
                let value = DockSection(rawValue: section) {
                 state.dockSection = value
+            }
+        case "switch":
+            if let id = components.queryItems?
+                .first(where: { $0.name == "account" })?.value {
+                state.panelTab = .accounts
+                state.pinned = true
+                state.forceExpand()
+                AccountService.shared.requestActivate(id)
             }
         case "pin":      state.togglePin()
         case "settings": SettingsWindow.shared.show()

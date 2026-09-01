@@ -24,11 +24,24 @@ struct RateWindow: Equatable {
     }
 }
 
+struct RateProjection: Equatable {
+    var percentPerHour: Double
+    var exhaustionAt: Date?
+
+    var text: String? {
+        guard let exhaustionAt else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return "at this pace, full around \(formatter.string(from: exhaustionAt))"
+    }
+}
+
 struct CodexLimits: Equatable {
     var primary: RateWindow
     var secondary: RateWindow?
     var plan: String
     var measuredAt: Date
+    var projection: RateProjection?
 }
 
 struct LocalTally: Equatable {
@@ -66,17 +79,21 @@ final class UsageService: @unchecked Sendable {
 
     private let onUpdate: @Sendable (UsageSnapshot) -> Void
     private let onReset: @Sendable (NotchSource, RateWindow) -> Void
+    private let onThreshold: @Sendable (RateWindow, Int, RateProjection?) -> Void
 
     private let lock = NSLock()
     private var windowHours: Double
     private var lastCodexReset: Date?
+    private var announced: [Date: Set<Int>] = [:]
 
     init(windowHours: Double,
          onUpdate: @escaping @Sendable (UsageSnapshot) -> Void,
-         onReset: @escaping @Sendable (NotchSource, RateWindow) -> Void) {
+         onReset: @escaping @Sendable (NotchSource, RateWindow) -> Void,
+         onThreshold: @escaping @Sendable (RateWindow, Int, RateProjection?) -> Void) {
         self.windowHours = windowHours
         self.onUpdate = onUpdate
         self.onReset = onReset
+        self.onThreshold = onThreshold
     }
 
     func update(windowHours value: Double) {
@@ -106,12 +123,22 @@ final class UsageService: @unchecked Sendable {
         snap.codexLimits = Self.codexLimits()
 
         if let limits = snap.codexLimits {
+            let window = limits.primary
             let previous = lastCodexReset
-            lastCodexReset = limits.primary.resetsAt
-            if let previous, limits.primary.resetsAt > previous,
-               limits.primary.usedPercent < 50 {
-                onReset(.chatgpt, limits.primary)
+            lastCodexReset = window.resetsAt
+            if let previous, window.resetsAt > previous, window.usedPercent < 50 {
+                onReset(.chatgpt, window)
+                announced[previous] = nil
             }
+
+            var seen = announced[window.resetsAt] ?? []
+            for mark in [80, 95] where window.usedPercent >= Double(mark)
+                && !seen.contains(mark) {
+                seen.insert(mark)
+                onThreshold(window, mark, limits.projection)
+            }
+            announced[window.resetsAt] = seen
+            announced = announced.filter { $0.key > Date().addingTimeInterval(-86_400) }
         }
         onUpdate(snap)
     }
@@ -224,6 +251,7 @@ final class UsageService: @unchecked Sendable {
         guard FileManager.default.fileExists(atPath: root) else { return nil }
 
         var newest: (Date, [String: Any])?
+        var samples: [(Date, Double)] = []
 
         for url in recentFiles(root, within: 86_400 * 3, limit: 8) {
             guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
@@ -243,6 +271,10 @@ final class UsageService: @unchecked Sendable {
 
                 let stamp = (obj["timestamp"] as? String).flatMap(parseDate) ?? .distantPast
                 if newest == nil || stamp > newest!.0 { newest = (stamp, limits) }
+                if let primary = limits["primary"] as? [String: Any],
+                   let used = primary["used_percent"] as? Double {
+                    samples.append((stamp, used))
+                }
             }
         }
 
@@ -252,7 +284,37 @@ final class UsageService: @unchecked Sendable {
         return CodexLimits(primary: primary,
                            secondary: window(from: limits["secondary"]),
                            plan: limits["plan_type"] as? String ?? "",
-                           measuredAt: measured)
+                           measuredAt: measured,
+                           projection: project(primary, samples: samples))
+    }
+
+    private static func project(_ window: RateWindow,
+                                samples: [(Date, Double)]) -> RateProjection? {
+        let start = window.resetsAt
+            .addingTimeInterval(-Double(window.windowMinutes) * 60)
+        let inWindow = samples
+            .filter { $0.0 >= start && $0.0 <= Date() }
+            .sorted { $0.0 < $1.0 }
+
+        guard let first = inWindow.first, let last = inWindow.last,
+              inWindow.count >= 3 else { return nil }
+
+        let hours = last.0.timeIntervalSince(first.0) / 3600
+        guard hours >= 0.15 else { return nil }
+
+        let rate = (last.1 - first.1) / hours
+        guard rate > 0.5 else { return RateProjection(percentPerHour: max(0, rate),
+                                                      exhaustionAt: nil) }
+
+        let remaining = 100 - window.usedPercent
+        guard remaining > 0 else {
+            return RateProjection(percentPerHour: rate, exhaustionAt: nil)
+        }
+
+        let seconds = (remaining / rate) * 3600
+        let hit = Date().addingTimeInterval(seconds)
+        return RateProjection(percentPerHour: rate,
+                              exhaustionAt: hit < window.resetsAt ? hit : nil)
     }
 
     private static func window(from value: Any?) -> RateWindow? {

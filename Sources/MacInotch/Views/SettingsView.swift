@@ -229,6 +229,12 @@ struct SettingsView: View {
                     .disabled(!prefs.d.showUsage)
                 Toggle("Notify when the window resets", isOn: $prefs.d.notifyOnUsageReset)
                     .disabled(!prefs.d.showUsage)
+                Toggle("Warn at 80% and 95% of the limit",
+                       isOn: $prefs.d.notifyOnUsageThreshold)
+                    .disabled(!prefs.d.showUsage)
+                Text("The warning offers to switch to another saved account when one "
+                     + "has room left.")
+                    .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("Window length") {
                     Slider(value: $prefs.d.usageWindowHours, in: 1...24, step: 1)
                         .frame(width: 170)

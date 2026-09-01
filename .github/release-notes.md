@@ -1,25 +1,36 @@
-Switching accounts now closes the tool and reopens it for you.
+Limits that warn you before you hit them, and an account that can take over.
 
-### The switch holds now
+### It tells you before you run out
 
-Codex keeps its session in memory and writes it back when it exits, so
-swapping the file underneath a running Codex achieved nothing: quitting put
-the old session straight back, and because refresh tokens rotate, the round
-trip could leave you at a login screen.
+Codex writes a rate limit record on every turn, so there is a real series of
+measurements sitting in the rollout files rather than a single number. That is
+enough to know how fast you are burning through a window, so the usage row now
+reads "5h limit, resets in 3h 12m, at this pace full around 16:40".
 
-Choosing another account now says the tool is open and offers to quit it,
-switch, and reopen it. The outgoing session is saved after the tool has fully
-exited, so what gets stored is the last thing it wrote rather than a copy that
-is already out of date.
+A chime and a notification arrive at 80% and 95% of the window, once each per
+window, with the reset time and the pace.
 
-### Failures say what went wrong
+### The warning can hand over to another account
 
-Switching used to discard its errors, so a real failure looked exactly like a
-dead button. Both the Accounts tab and Settings now show the reason, and a
-saved session is checked before it replaces the live one, so a damaged copy is
-reported instead of being discovered at a login prompt.
+If another saved account has room, the warning offers to switch to it and says
+what it knows: "rinetech is 12% as of 2h ago". Tapping it opens the Accounts
+tab with the switch ready to confirm, so quitting the tool is still your
+decision rather than something that happens mid task.
 
-Sessions that have sat unused long enough to need a fresh sign in are marked.
+An account whose window has passed its reset time is reported as reset, since
+that much can be worked out without being signed in to it.
+
+### Usage is now attributed per account
+
+Each saved account carries its own last known percentage and reset time, so
+the figures no longer blend two accounts together after a switch.
+
+### Resume a session
+
+Clicking a session in the Sessions tab reopens that conversation in a terminal
+at the project directory, rather than only revealing the transcript file. It
+uses the tool's own resume command, and falls back to revealing the file when
+the tool cannot be found.
 
 ### Install
 

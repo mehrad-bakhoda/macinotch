@@ -228,8 +228,14 @@ struct ExpandedPanel: View {
     private func accountRow(_ account: SavedAccount, isActive: Bool) -> some View {
         PanelRow(id: "account-\(account.id)",
                  title: account.label,
-                 subtitle: isActive ? "Signed in now"
-                     : account.subtitle(showEmail: account.label != account.email),
+                 subtitle: {
+                     var parts: [String] = []
+                     if isActive { parts.append("Signed in now") }
+                     let detail = account.subtitle(showEmail: account.label != account.email)
+                     if !detail.isEmpty { parts.append(detail) }
+                     if let usage = account.usageText { parts.append(usage) }
+                     return parts.joined(separator: " · ")
+                 }(),
                  theme: t,
                  onTap: isActive ? nil : { switcher.requestActivate(account.id) },
                  leading: {
@@ -407,8 +413,10 @@ struct ExpandedPanel: View {
                          + (session.model.isEmpty ? "" : " · \(session.model)"),
                  theme: t,
                  onTap: {
-                     NSWorkspace.shared.activateFileViewerSelecting(
-                         [URL(fileURLWithPath: session.path)])
+                     if !SessionLauncher.resume(session) {
+                         NSWorkspace.shared.activateFileViewerSelecting(
+                             [URL(fileURLWithPath: session.path)])
+                     }
                  },
                  leading: {
                      ZStack(alignment: .bottomTrailing) {
@@ -429,6 +437,9 @@ struct ExpandedPanel: View {
                          .monospacedDigit()
                  })
         .contextMenu {
+            if SessionLauncher.canResume(session) {
+                Button("Resume this session") { SessionLauncher.resume(session) }
+            }
             Button("Reveal transcript") {
                 NSWorkspace.shared.activateFileViewerSelecting(
                     [URL(fileURLWithPath: session.path)])
@@ -1425,7 +1436,12 @@ struct ExpandedPanel: View {
         return PanelRow(id: "usage-codex",
                         title: limits.plan.isEmpty ? "Codex"
                             : "Codex \(limits.plan.capitalized)",
-                        subtitle: "\(primary.label) limit, resets in \(primary.remainingText)",
+                        subtitle: {
+                            var parts = ["\(primary.label) limit",
+                                         "resets in \(primary.remainingText)"]
+                            if let text = limits.projection?.text { parts.append(text) }
+                            return parts.joined(separator: ", ")
+                        }(),
                         theme: t, onTap: nil,
                         leading: {
                             SourceIcon(source: .chatgpt, kind: .info, theme: t, side: 28)

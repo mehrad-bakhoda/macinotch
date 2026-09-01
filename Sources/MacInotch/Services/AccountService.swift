@@ -77,6 +77,23 @@ struct SavedAccount: Identifiable, Codable, Equatable {
     var addedAt: Date
     var lastUsedAt: Date?
     var savedAt: Date?
+    var knownPercent: Double?
+    var knownResetsAt: Date?
+    var knownAt: Date?
+
+    var effectivePercent: Double? {
+        guard let knownPercent else { return nil }
+        if let knownResetsAt, knownResetsAt <= Date() { return 0 }
+        return knownPercent
+    }
+
+    var usageText: String? {
+        guard let percent = effectivePercent, let knownAt else { return nil }
+        if percent == 0 { return "window has reset since" }
+        let age = Int(Date().timeIntervalSince(knownAt))
+        let ago = age < 3600 ? "\(max(1, age / 60))m ago" : "\(age / 3600)h ago"
+        return "\(Int(percent))% as of \(ago)"
+    }
 
     func subtitle(showEmail: Bool) -> String {
         let planText = plan.isEmpty ? "" : plan.capitalized
@@ -394,6 +411,25 @@ final class AccountService: ObservableObject {
             if !hostApps(provider).isEmpty { return true }
             return PresenceService.processExists(named: provider.processName)
         }
+    }
+
+    func recordUsage(_ provider: AccountProvider, percent: Double, resetsAt: Date) {
+        guard let id = activeId[provider],
+              let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+        guard accounts[index].knownPercent != percent
+                || accounts[index].knownResetsAt != resetsAt else { return }
+        accounts[index].knownPercent = percent
+        accounts[index].knownResetsAt = resetsAt
+        accounts[index].knownAt = Date()
+        save()
+    }
+
+    func alternative(to provider: AccountProvider) -> SavedAccount? {
+        let current = activeId[provider]
+        return accounts(for: provider)
+            .filter { $0.id != current }
+            .filter { ($0.effectivePercent ?? 100) < 80 }
+            .min { ($0.effectivePercent ?? 100) < ($1.effectivePercent ?? 100) }
     }
 
     func rename(_ id: String, to label: String) {

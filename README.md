@@ -30,7 +30,7 @@ on each side; the notch resizes to fit and hides anything that has no data.
 | **Weather** | Current conditions, high and low, from Open-Meteo |
 | **Media** | Spotify and Apple Music with artwork, scrubbing, transport and volume |
 | **Calendar** | Next event with a countdown and a join button for Zoom, Meet, Teams, Webex, Whereby, Around and Jitsi |
-| **AI usage** | Codex limits as Codex itself reports them, both the five hour and the weekly window, with a chime when one resets. Claude Code publishes no quota, so it shows a local token tally instead |
+| **AI usage** | Codex limits as Codex itself reports them, five hour and weekly, with the pace you are burning them and when you will run out. Warns at 80% and 95%, and offers another saved account when one has room. Claude Code publishes no quota, so it shows a local token tally instead |
 | **Activity** | Recent notifications with optional action buttons |
 
 ### Tabs
@@ -40,7 +40,8 @@ on each side; the notch resizes to fit and hides anything that has no data.
   New screenshots land here automatically.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
   counts, token spend and a live indicator driven by whether the process is
-  actually running. Can be narrowed to running sessions only.
+  actually running. Can be narrowed to running sessions only, and clicking one
+  resumes that conversation.
 - **Notes**, sticky notes backed by plain `.md` files in a folder you choose.
 
 ### Other
