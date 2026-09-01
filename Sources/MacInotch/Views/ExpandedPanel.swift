@@ -18,6 +18,8 @@ struct ExpandedPanel: View {
     @ObservedObject private var notes = NotesStore.shared
     @ObservedObject private var switcher = AccountService.shared
     @ObservedObject private var network = NetworkService.shared
+    @ObservedObject private var capture = CaptureService.shared
+    @ObservedObject private var focusState = FocusWatcher.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -474,6 +476,29 @@ struct ExpandedPanel: View {
                     .buttonStyle(.plain)
                 }
                 Spacer()
+                Button {
+                    SoundKit.tap()
+                    capture.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: capture.recording
+                              ? "stop.circle.fill" : "record.circle")
+                            .font(.system(size: 11, weight: .semibold))
+                        if capture.recording {
+                            Text(capture.elapsed)
+                                .font(.system(size: 10, weight: .semibold))
+                                .monospacedDigit()
+                        }
+                    }
+                    .foregroundStyle(capture.recording ? t.red : t.tertiary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(capture.recording
+                                               ? t.red.opacity(0.16) : Color.clear))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(capture.recording ? "Stop recording" : "Record the screen")
                 dockToolbar
             }
 
@@ -1176,6 +1201,34 @@ struct ExpandedPanel: View {
                                        view: AnyView(tallyRow(.chatgpt, tally))))
                 }
             }
+        }
+
+        if p.showFocusRow && focusState.available {
+            out.append(RowSpec(id: "focus", view: AnyView(
+                PanelRow(id: "focus",
+                         title: focusState.active
+                             ? (focusState.modeName ?? "Focus") : "Focus off",
+                         subtitle: focusState.active
+                             ? "Notifications are being held"
+                             : (p.focusShortcut.isEmpty
+                                ? "Pick a shortcut in Settings to toggle"
+                                : "Tap to run \(p.focusShortcut)"),
+                         theme: t,
+                         onTap: p.focusShortcut.isEmpty ? nil : {
+                             FocusController.run(p.focusShortcut)
+                         },
+                         leading: {
+                             IconBadge(symbol: focusState.active
+                                       ? "moon.fill" : "moon",
+                                       tint: focusState.active ? t.purple : t.secondary,
+                                       theme: t)
+                         },
+                         trailing: {
+                             if focusState.active {
+                                 Circle().fill(t.purple).frame(width: 7, height: 7)
+                             }
+                         })
+            )))
         }
 
         if p.alertNetwork {

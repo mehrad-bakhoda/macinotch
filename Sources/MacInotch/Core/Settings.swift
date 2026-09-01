@@ -63,6 +63,8 @@ struct PrefsData: Codable, Equatable {
     var alertThermal         = true
     var alertBattery         = true
     var alertNetwork         = true
+    var focusShortcut        = ""
+    var showFocusRow         = true
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

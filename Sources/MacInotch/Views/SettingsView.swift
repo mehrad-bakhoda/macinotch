@@ -10,6 +10,7 @@ final class SettingsNav: ObservableObject {
     @Published var historySearch: String = ""
     @Published var historySource: NotchSource? = nil
     @Published var newAccountLabel: String = ""
+    @Published var shortcutNames: [String] = []
 }
 
 struct SettingsView: View {
@@ -243,6 +244,28 @@ struct SettingsView: View {
                      + "Claude Code publishes no quota anywhere on disk, so its figure "
                      + "is a local token tally over the window length above.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Focus") {
+                Toggle("Focus row in the panel", isOn: $prefs.d.showFocusRow)
+                Picker("Toggle with shortcut", selection: $prefs.d.focusShortcut) {
+                    Text("None").tag("")
+                    ForEach(nav.shortcutNames, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                Text("macOS offers no way to set a Focus directly, so toggling runs a "
+                     + "Shortcut you have made. Build one with the Set Focus action, "
+                     + "then pick it here. The state shown in the notch is read from "
+                     + "the system and is accurate either way.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Reload shortcuts") { nav.shortcutNames = FocusController.shortcuts() }
+                    .controlSize(.small)
+                    .onAppear {
+                        if nav.shortcutNames.isEmpty {
+                            nav.shortcutNames = FocusController.shortcuts()
+                        }
+                    }
             }
 
             Section("Alerts") {
