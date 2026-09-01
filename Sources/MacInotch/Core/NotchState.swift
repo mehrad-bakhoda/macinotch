@@ -20,6 +20,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
     case dock
     case sessions
     case accounts
+    case github
     case notes
 
     var id: String { rawValue }
@@ -29,6 +30,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .dock: return "Dock"
         case .sessions: return "Sessions"
         case .accounts: return "Accounts"
+        case .github: return "GitHub"
         case .notes: return "Notes"
         }
     }
@@ -38,6 +40,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .dock: return "tray.full"
         case .sessions: return "sparkles"
         case .accounts: return "person.2"
+        case .github: return "chevron.left.forwardslash.chevron.right"
         case .notes: return "note.text"
         }
     }

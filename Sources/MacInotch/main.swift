@@ -101,7 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         AccountService.shared.recordUsage(
                             .codex,
                             percent: limits.primary.usedPercent,
-                            resetsAt: limits.primary.resetsAt)
+                            resetsAt: limits.primary.resetsAt,
+                            measuredAt: limits.measuredAt)
                     }
                 }
             },

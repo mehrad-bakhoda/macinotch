@@ -18,12 +18,20 @@ struct WorkflowFailure: Identifiable, Equatable {
     }
 }
 
+struct ContributionDay: Equatable {
+    var date: Date
+    var count: Int
+    var level: Int
+}
+
 struct GitHubSnapshot: Equatable {
     var login: String = ""
     var pushes: Int = 0
     var pullRequests: Int = 0
     var reviewRequests: Int = 0
     var failures: [WorkflowFailure] = []
+    var contributions: [ContributionDay] = []
+    var contributionTotal = 0
     var checkedAt: Date?
 
     var connected: Bool { !login.isEmpty }
@@ -307,8 +315,54 @@ final class GitHubService: ObservableObject {
         }
         next.failures = failures.sorted { $0.at > $1.at }
 
+        let calendar = await contributionCalendar()
+        next.contributions = calendar.days
+        next.contributionTotal = calendar.total
+
         if snapshot != next { snapshot = next }
         announce(next.failures)
+    }
+
+    private func contributionCalendar() async -> (days: [ContributionDay], total: Int) {
+        guard let token, let url = URL(string: "https://api.github.com/graphql") else {
+            return ([], 0)
+        }
+        let query = """
+        query { viewer { contributionsCollection { contributionCalendar {         totalContributions weeks { contributionDays { date contributionCount         contributionLevel } } } } } }
+        """
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("MacInotch", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 20
+        request.httpBody = try? JSONSerialization.data(
+            withJSONObject: ["query": query])
+
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let calendar = (((root["data"] as? [String: Any])?["viewer"]
+                  as? [String: Any])?["contributionsCollection"]
+                  as? [String: Any])?["contributionCalendar"] as? [String: Any],
+              let weeks = calendar["weeks"] as? [[String: Any]] else { return ([], 0) }
+
+        let levels = ["NONE": 0, "FIRST_QUARTILE": 1, "SECOND_QUARTILE": 2,
+                      "THIRD_QUARTILE": 3, "FOURTH_QUARTILE": 4]
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        var days: [ContributionDay] = []
+        for week in weeks {
+            for day in (week["contributionDays"] as? [[String: Any]]) ?? [] {
+                guard let stamp = day["date"] as? String,
+                      let date = formatter.date(from: stamp) else { continue }
+                days.append(ContributionDay(
+                    date: date,
+                    count: day["contributionCount"] as? Int ?? 0,
+                    level: levels[day["contributionLevel"] as? String ?? ""] ?? 0))
+            }
+        }
+        return (days, calendar["totalContributions"] as? Int ?? 0)
     }
 
     private func announce(_ failures: [WorkflowFailure]) {

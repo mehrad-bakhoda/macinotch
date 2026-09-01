@@ -73,6 +73,8 @@ struct PrefsData: Codable, Equatable {
     var showGitHub           = true
     var showQuickBar         = true
     var githubClientId       = ""
+    var accountUsageSchema   = 0
+    var calendarsExcluded: [String] = []
     var showUsage            = true
     var usageWindowHours     = 5.0
     var notifyOnUsageReset   = true

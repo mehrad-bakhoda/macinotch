@@ -89,10 +89,19 @@ struct SavedAccount: Identifiable, Codable, Equatable {
 
     var usageText: String? {
         guard let percent = effectivePercent, let knownAt else { return nil }
-        if percent == 0 { return "window has reset since" }
+        if percent == 0 { return "0% used, window has reset" }
+
         let age = Int(Date().timeIntervalSince(knownAt))
         let ago = age < 3600 ? "\(max(1, age / 60))m ago" : "\(age / 3600)h ago"
-        return "\(Int(percent))% as of \(ago)"
+        var text = "\(Int(percent))% as of \(ago)"
+
+        if let resets = knownResetsAt, resets > Date() {
+            let left = Int(resets.timeIntervalSinceNow)
+            let span = left >= 3600
+                ? "\(left / 3600)h \(left % 3600 / 60)m" : "\(max(1, left / 60))m"
+            text += ", resets in \(span)"
+        }
+        return text
     }
 
     func subtitle(showEmail: Bool) -> String {
@@ -164,6 +173,8 @@ final class AccountService: ObservableObject {
     private let metadataURL: URL
     private var watchdog: Timer?
     private var lastSeenStamp: [AccountProvider: Date] = [:]
+    private var switchedAt: [AccountProvider: Date] = [:]
+    private var resetAnnounced: Set<String> = []
 
     private init() {
         let dir = FileManager.default
@@ -172,13 +183,17 @@ final class AccountService: ObservableObject {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         metadataURL = dir.appendingPathComponent("accounts.json")
         load()
+        discardUntrustedReadings()
         refresh()
     }
 
     func start() {
         watchdog?.invalidate()
         watchdog = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { _ in
-            Task { @MainActor in AccountService.shared.refresh() }
+            Task { @MainActor in
+                AccountService.shared.refresh()
+                AccountService.shared.checkParkedResets()
+            }
         }
     }
 
@@ -308,6 +323,7 @@ final class AccountService: ObservableObject {
         }
 
         accounts[index].lastUsedAt = Date()
+        switchedAt[provider] = Date()
         save()
         lastSeenStamp[provider] = nil
         refresh(provider)
@@ -413,15 +429,72 @@ final class AccountService: ObservableObject {
         }
     }
 
-    func recordUsage(_ provider: AccountProvider, percent: Double, resetsAt: Date) {
+    private func discardUntrustedReadings() {
+        guard Prefs.shared.d.accountUsageSchema < 2 else { return }
+        Prefs.shared.d.accountUsageSchema = 2
+        guard !accounts.isEmpty else { return }
+
+        for index in accounts.indices {
+            accounts[index].knownPercent = nil
+            accounts[index].knownResetsAt = nil
+            accounts[index].knownAt = nil
+        }
+        save()
+    }
+
+    func clearReading(_ id: String) {
+        guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+        accounts[index].knownPercent = nil
+        accounts[index].knownResetsAt = nil
+        accounts[index].knownAt = nil
+        save()
+    }
+
+    func recordUsage(_ provider: AccountProvider, percent: Double,
+                     resetsAt: Date, measuredAt: Date) {
         guard let id = activeId[provider],
               let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+
+        if let switched = switchedAt[provider], measuredAt <= switched { return }
+
         guard accounts[index].knownPercent != percent
                 || accounts[index].knownResetsAt != resetsAt else { return }
         accounts[index].knownPercent = percent
         accounts[index].knownResetsAt = resetsAt
-        accounts[index].knownAt = Date()
+        accounts[index].knownAt = measuredAt
         save()
+    }
+
+    func checkParkedResets() {
+        guard Prefs.shared.d.notifyOnUsageReset else { return }
+
+        for index in accounts.indices {
+            let account = accounts[index]
+            guard let resets = account.knownResetsAt, resets <= Date(),
+                  (account.knownPercent ?? 0) > 0,
+                  activeId[account.provider] != account.id else { continue }
+
+            let key = "\(account.id)-\(resets.timeIntervalSince1970)"
+            guard !resetAnnounced.contains(key) else { continue }
+            resetAnnounced.insert(key)
+
+            accounts[index].knownPercent = 0
+            accounts[index].knownAt = Date()
+            accounts[index].knownResetsAt = nil
+            save()
+
+            var p = NotchPayload()
+            p.source = account.provider.source.rawValue
+            p.kind = "success"
+            p.key = "parked-reset-\(account.id)"
+            p.title = "\(account.label) has reset"
+            p.body = "That account is back to zero. Switch to it when you need it."
+            p.timeout = 12
+            p.sound = true
+            p.actions = [NotchAction(label: "Switch to it",
+                                     url: "macinotch://switch?account=\(account.id)")]
+            NotchState.shared.handle(p)
+        }
     }
 
     func alternative(to provider: AccountProvider) -> SavedAccount? {

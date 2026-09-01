@@ -2,6 +2,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ExpandedPanel: View {
+    static let dayLabel: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f
+    }()
     static let clock: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
@@ -57,6 +62,8 @@ struct ExpandedPanel: View {
                     sessionList
                 case .accounts:
                     accountsTab
+                case .github:
+                    githubTab
                 case .notes:
                     notesTab
                 }
@@ -355,9 +362,121 @@ struct ExpandedPanel: View {
             switch tab {
             case .sessions: return p.showSessions
             case .accounts: return p.showAccounts
+            case .github:   return p.showGitHub && github.snapshot.connected
             case .notes:    return p.showNotes
             default:        return true
             }
+        }
+    }
+
+    private var githubTab: some View {
+        let snap = github.snapshot
+        return VStack(alignment: .leading, spacing: 11) {
+            HStack {
+                sectionLabel("GITHUB", action: nil)
+                Spacer()
+                Text(snap.login)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(t.tertiary)
+            }
+
+            HStack(spacing: 14) {
+                statBlock("\(snap.pushes)", "pushes today")
+                statBlock("\(snap.pullRequests)", "PRs opened")
+                statBlock("\(snap.reviewRequests)", "to review")
+                Spacer()
+            }
+
+            if !snap.contributions.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("\(snap.contributionTotal) contributions in the last year")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(t.secondary)
+                    contributionGrid(snap.contributions)
+                }
+            }
+
+            if snap.failures.isEmpty {
+                Text("No failing workflows")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(t.tertiary)
+            } else {
+                ForEach(snap.failures.prefix(4)) { failure in
+                    PanelRow(id: "ghtab-\(failure.id)", title: failure.workflow,
+                             subtitle: "\(failure.repo) · \(failure.ago)", theme: t,
+                             onTap: {
+                                 if let url = URL(string: failure.url) {
+                                     NSWorkspace.shared.open(url)
+                                 }
+                             },
+                             leading: {
+                                 IconBadge(symbol: "xmark.octagon.fill",
+                                           tint: t.red, theme: t)
+                             },
+                             trailing: { EmptyView() })
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button("Refresh") { Task { await github.refresh() } }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(t.accent)
+                Button("Sign out") {
+                    github.disconnect()
+                    state.panelTab = .home
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 10))
+                .foregroundStyle(t.red)
+                Spacer()
+                if let at = snap.checkedAt {
+                    Text("checked \(Self.clock.string(from: at))")
+                        .font(.system(size: 9))
+                        .foregroundStyle(t.tertiary)
+                }
+            }
+        }
+    }
+
+    private func statBlock(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .foregroundStyle(t.primary)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(t.tertiary)
+        }
+    }
+
+    private func contributionGrid(_ days: [ContributionDay]) -> some View {
+        let weeks = stride(from: 0, to: days.count, by: 7).map {
+            Array(days[$0..<min($0 + 7, days.count)])
+        }
+        let recent = weeks.suffix(26)
+        return HStack(alignment: .top, spacing: 2) {
+            ForEach(Array(recent.enumerated()), id: \.offset) { _, week in
+                VStack(spacing: 2) {
+                    ForEach(Array(week.enumerated()), id: \.offset) { _, day in
+                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                            .fill(contributionTint(day.level))
+                            .frame(width: 7, height: 7)
+                            .help("\(day.count) on \(Self.dayLabel.string(from: day.date))")
+                    }
+                }
+            }
+        }
+    }
+
+    private func contributionTint(_ level: Int) -> Color {
+        switch level {
+        case 1: return t.green.opacity(0.35)
+        case 2: return t.green.opacity(0.55)
+        case 3: return t.green.opacity(0.78)
+        case 4: return t.green
+        default: return t.wellFill
         }
     }
 
@@ -514,6 +633,7 @@ struct ExpandedPanel: View {
                      }
                  })
             .contextMenu {
+                Button("Clear the usage reading") { switcher.clearReading(account.id) }
                 Button("Forget this account") { switcher.forget(account.id) }
                     .disabled(isActive)
             }

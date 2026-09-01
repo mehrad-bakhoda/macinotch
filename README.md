@@ -60,6 +60,8 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - **Dock**, a file shelf and clipboard history. Drag files onto the notch to
   park them, then drag them straight back out. Named piles keep work separate.
   New screenshots land here automatically.
+- **GitHub**, today's pushes, pull requests and reviews waiting on you, a
+  contribution graph and any failing workflows.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
   counts, token spend and a live indicator driven by whether the process is
   actually running. Can be narrowed to running sessions only, and clicking one
@@ -357,6 +359,12 @@ the current state stays exact, since that comes from the assertion store.
 hotspots cannot be recognised reliably by SSID, but the path monitor reports
 `isExpensive` and `isConstrained`, which is the thing actually worth acting on.
 Wi-Fi names need Location, so the label falls back to the interface without it.
+
+**Codex rollouts do not say which account wrote them.** They carry a rate
+limit on every turn but no account identity, so a measurement cannot be
+attributed by reading it. Anything measured before the most recent account
+switch is ignored instead, which is the only reliable way to keep two accounts
+apart from files that do not distinguish them.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.

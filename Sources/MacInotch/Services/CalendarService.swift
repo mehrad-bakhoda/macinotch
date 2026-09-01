@@ -31,6 +31,15 @@ struct AgendaEvent: Equatable {
     }
 }
 
+struct CalendarChoice: Identifiable, Equatable {
+    var id: String
+    var title: String
+    var account: String
+    var color: NSColor?
+
+    var isGoogle: Bool { account.lowercased().contains("google") }
+}
+
 struct ReminderItem: Identifiable, Equatable {
     var id: String
     var title: String
@@ -56,6 +65,7 @@ final class CalendarService: ObservableObject {
     @Published private(set) var authorized = false
     @Published private(set) var denied = false
     @Published private(set) var remindersAuthorized = false
+    @Published private(set) var sources: [CalendarChoice] = []
 
     private let store = EKEventStore()
     private var timer: Timer?
@@ -117,8 +127,50 @@ final class CalendarService: ObservableObject {
         }
     }
 
+    func refreshSources() {
+        guard authorized else {
+            if !sources.isEmpty { sources = [] }
+            return
+        }
+        let found = store.calendars(for: .event).map {
+            CalendarChoice(id: $0.calendarIdentifier,
+                           title: $0.title,
+                           account: $0.source?.title ?? "",
+                           color: $0.color)
+        }.sorted { ($0.account, $0.title) < ($1.account, $1.title) }
+        if found != sources { sources = found }
+    }
+
+    func signOut() {
+        Prefs.shared.d.calendarsExcluded = sources.map(\.id)
+        next = nil
+        agenda = []
+        reminders = []
+    }
+
+    func setEnabled(_ id: String, _ on: Bool) {
+        var excluded = Set(Prefs.shared.d.calendarsExcluded)
+        if on { excluded.remove(id) } else { excluded.insert(id) }
+        Prefs.shared.d.calendarsExcluded = Array(excluded).sorted()
+        tick()
+    }
+
+    func isEnabled(_ id: String) -> Bool {
+        !Prefs.shared.d.calendarsExcluded.contains(id)
+    }
+
+    private func selectedCalendars() -> [EKCalendar]? {
+        let excluded = Set(Prefs.shared.d.calendarsExcluded)
+        guard !excluded.isEmpty else { return nil }
+        let kept = store.calendars(for: .event).filter {
+            !excluded.contains($0.calendarIdentifier)
+        }
+        return kept.isEmpty ? nil : kept
+    }
+
     private func tick() {
         refreshAuthorization()
+        refreshSources()
         guard authorized, Prefs.shared.d.showCalendar else {
             if next != nil { next = nil }
             return
@@ -127,7 +179,8 @@ final class CalendarService: ObservableObject {
         let now = Date()
         let horizon = now.addingTimeInterval(Prefs.shared.d.calendarHorizonHours * 3600)
         let predicate = store.predicateForEvents(withStart: now.addingTimeInterval(-3600),
-                                                 end: horizon, calendars: nil)
+                                                 end: horizon,
+                                                 calendars: selectedCalendars())
 
         let upcoming = store.events(matching: predicate)
             .filter { event in

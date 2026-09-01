@@ -345,11 +345,60 @@ struct SettingsView: View {
                        isOn: $prefs.d.meetingSilencesNotch)
                     .disabled(!prefs.d.suggestMeetingMode)
                 HStack {
-                    Button("Connect calendar and reminders") {
-                        calendar.requestAccess()
+                    Button(calendar.authorized ? "Refresh calendars"
+                                               : "Connect calendar and reminders") {
+                        calendar.authorized ? calendar.refreshSources()
+                                            : calendar.requestAccess()
                     }
                     .controlSize(.small)
-                    Text(calendar.authorized ? "Calendar connected" : "Calendar not connected")
+                    Text(calendar.authorized ? "Connected" : "Not connected")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Add a Google account") {
+                        if let url = URL(string:
+                            "x-apple.systempreferences:com.apple.Internet-Accounts-Settings"
+                            + ".extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                }
+
+                if calendar.authorized && !calendar.sources.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Which calendars to read")
+                            .font(.caption).foregroundStyle(.secondary)
+                        ForEach(calendar.sources) { choice in
+                            Toggle(isOn: Binding(
+                                get: { calendar.isEnabled(choice.id) },
+                                set: { calendar.setEnabled(choice.id, $0) })) {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(choice.color ?? .systemGray))
+                                        .frame(width: 8, height: 8)
+                                    Text(choice.title)
+                                    if !choice.account.isEmpty {
+                                        Text(choice.account)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Button("Sign out of calendars") {
+                        calendar.signOut()
+                        if let url = URL(string:
+                            "x-apple.systempreferences:com.apple.preference.security"
+                            + "?Privacy_Calendars") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                    Text("Turns every calendar off here and opens the privacy pane, "
+                         + "where access itself can be revoked. macOS does not let an "
+                         + "application withdraw its own permission.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Text("Meeting mode is offered when an event with a join link starts. "

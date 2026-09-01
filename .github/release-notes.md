@@ -1,28 +1,37 @@
-Sign in to GitHub with a click, instead of making a token by hand.
+Usage attributed to the right account, a GitHub tab, and choosing calendars.
 
-### Signing in
+### The wrong account was being credited
 
-GitHub's device flow is now supported. Pressing sign in opens github.com,
-shows a short code that is already on your clipboard, and waits. Approving it
-in the browser finishes the sign in. Nothing is typed into MacInotch, and no
-client secret exists to leak, which is the point of that flow.
+Codex rollout files record a rate limit on every turn but never say which
+account produced it. The newest measurement was therefore stamped onto
+whichever account happened to be signed in when it was read, so switching
+accounts moved the previous account's figure onto the new one, or the reverse.
+An account sitting at zero could show a hundred.
 
-The resulting token goes into the login keychain, marked accessible only when
-unlocked and only on this device, and is read back at launch so signing in
-happens once.
+Measurements taken before the most recent switch are now ignored, which is the
+only honest way to tell the two apart from files that do not distinguish them.
+Readings stored by earlier versions cannot be trusted and are discarded once on
+upgrade, so figures start empty and refill as they are measured. A single
+reading can also be cleared from the account's menu.
 
-Device flow needs a client id, which is a public identifier rather than a
-secret. Until one is set the button explains the one time setup, and pasting a
-personal access token still works for anyone who prefers it.
+### Knowing when a parked account comes back
 
-### A fix worth knowing about
+Each saved account keeps its own reset time, shown alongside its percentage. An
+account you are not signed in to raises a notification when its window passes
+that time, offering to switch to it, since the useful moment for a second
+account is the moment it becomes usable again.
 
-A copy of the application was being left in the build directory next to the
-installed one. Both carried the same identifier, so macOS could launch either,
-and permissions such as calendar access are granted per application rather
-than per name. Granting access to one and running the other looked exactly
-like a permission that would not stick. The stray copy is gone and the build
-directory is ignored.
+### A GitHub tab
+
+Pushes, pull requests opened and reviews waiting, a contribution graph for the
+last six months, and any failing workflows, with sign out alongside them.
+
+### Choosing calendars
+
+Every calendar the machine knows about is listed, Google and Exchange included,
+each one switchable. Events are read only from the ones left on. Signing out
+turns them all off and opens the privacy pane, since macOS does not allow an
+application to withdraw its own permission.
 
 ### Install
 
