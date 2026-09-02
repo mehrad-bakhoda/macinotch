@@ -1,25 +1,14 @@
-A disk image, so installing is a drag rather than a chore.
+The disk image reads properly now.
 
-### Installing
+Finder draws the icon names in a disk image window itself, in a dark colour,
+and no setting in the image can change that. On the previous dark background
+they were nearly invisible. The background is light now, which is what almost
+every Mac application ships for exactly this reason, and the names read as they
+are supposed to.
 
-Releases now carry MacInotch.dmg. Opening it shows the application beside a
-shortcut to Applications, with an arrow between them, which is how every other
-Mac application asks to be installed. Dragging it across is the whole procedure.
-
-The window layout travels with the image rather than being arranged by scripting
-Finder during the build, because the machine that builds it has no one logged in
-to arrange anything. The zip is still attached for anyone who prefers it.
-
-The download button on the site now fetches the disk image directly instead of
-sending you to a releases page to find it.
-
-### Before that
-
-Everything was checked rather than assumed: every endpoint, the command line
-tool, the URL scheme, the sounds, the timer, notifications, and that no
-credential appears on the local endpoint. Twenty eight checks, all passing. The
-three that failed at first were the test reading a snapshot that is now
-deliberately three seconds stale while the panel is closed, not the application.
+The notch silhouette stays at the top so the window is recognisably this
+application, and the instruction underneath now mentions the right click needed
+on first open.
 
 ### Install
 
