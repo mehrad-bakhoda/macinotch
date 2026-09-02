@@ -461,7 +461,9 @@ final class NotchState: ObservableObject {
 
     private var lastSnapshot: Date = .distantPast
     private func publishSnapshot() {
-        guard Date().timeIntervalSince(lastSnapshot) > 1 else { return }
+        let quiet = mode == .collapsed && !pinned
+        guard Date().timeIntervalSince(lastSnapshot) > (quiet ? 3 : 1)
+        else { return }
         lastSnapshot = Date()
         SnapshotStore.shared.set(AppDelegate.snapshotJSON())
         SnapshotStore.shared.setFans(AppDelegate.fansJSON())

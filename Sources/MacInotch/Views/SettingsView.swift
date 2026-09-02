@@ -94,34 +94,22 @@ struct SettingsView: View {
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity)
         .background(.bar)
-        .overlay(alignment: .trailing) {
-            HStack(spacing: 5) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                TextField("Search settings", text: $nav.settingsSearch)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11.5))
-                    .frame(width: 128)
-                if !nav.settingsSearch.isEmpty {
-                    Button {
-                        nav.settingsSearch = ""
-                    } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.borderless)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 7).fill(.quaternary))
-            .padding(.trailing, 10)
-        }
     }
 
     @ViewBuilder private var content: some View {
         if !nav.settingsSearch.isEmpty {
-            searchResults
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    Text("Results")
+                        .font(.system(size: 13, weight: .semibold))
+                    Spacer(minLength: 12)
+                    searchField
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+                searchResults
+            }
         } else {
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
@@ -135,7 +123,8 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Spacer()
+                    Spacer(minLength: 12)
+                    searchField
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 12)
@@ -186,12 +175,35 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
+    private var searchField: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            TextField("Search", text: $nav.settingsSearch)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11.5))
+                .frame(width: 118)
+            if !nav.settingsSearch.isEmpty {
+                Button {
+                    nav.settingsSearch = ""
+                } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 7).fill(.quaternary))
+    }
+
     private var tabBlurb: String {
         switch nav.tab {
         case .general:
             return "How it looks and sounds, and the keys that reach it."
         case .widgets:
-            return "What appears in the panel, and where each figure comes from."
+            return "What the panel shows about you and the machine."
         case .notch:
             return "The shape itself: its size, what it does when you drag it, "
                 + "and what it can say with a colour."
@@ -202,7 +214,7 @@ struct SettingsView: View {
         case .history:
             return "Everything the notch has shown, searchable."
         case .integrations:
-            return "Permissions, hooks and the config file."
+            return "Accounts, mail, calendars, GitHub, dictation and permissions."
         }
     }
 
@@ -332,10 +344,6 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Accounts") {
-                Toggle("Accounts tab in the panel", isOn: $prefs.d.showAccounts)
-                accountList
-            }
 
             Section("AI usage") {
                 Toggle("Show token usage", isOn: $prefs.d.showUsage)
@@ -361,216 +369,8 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("GitHub") {
-                Toggle("Quick actions row in the panel", isOn: $prefs.d.showQuickBar)
-                Toggle("GitHub row in the panel", isOn: $prefs.d.showGitHub)
-                Toggle("Alert when a workflow fails", isOn: $prefs.d.alertWorkflowFailure)
 
-                if github.snapshot.connected {
-                    LabeledContent("Signed in as", value: github.snapshot.login)
-                    Text(github.snapshot.summary)
-                        .font(.caption).foregroundStyle(.secondary)
-                    HStack {
-                        Button("Refresh now") { Task { await github.refresh() } }
-                            .controlSize(.small)
-                        Button("Disconnect") { github.disconnect() }
-                            .controlSize(.small)
-                    }
-                } else {
-                    if github.canSignIn {
-                        if github.userCode.isEmpty {
-                            Button(github.signingIn ? "Starting" : "Sign in with GitHub") {
-                                Task { await github.signIn() }
-                            }
-                            .disabled(github.signingIn)
-                        } else {
-                            LabeledContent("Enter this code") {
-                                Text(github.userCode)
-                                    .font(.system(.title3, design: .monospaced).bold())
-                                    .textSelection(.enabled)
-                            }
-                            Text("Copied to the clipboard. The page is open in your "
-                                 + "browser and this window is waiting for it.")
-                                .font(.caption).foregroundStyle(.secondary)
-                            Button("Cancel") { github.cancelSignIn() }
-                                .controlSize(.small)
-                        }
-                    }
 
-                    DisclosureGroup("Token, or one click sign in setup") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Paste a fine grained token with read only access to "
-                                 + "Metadata, Actions, Contents and Pull requests. "
-                                 + "Select every repository you want workflow alerts "
-                                 + "for.")
-                                .font(.caption).foregroundStyle(.secondary)
-                            HStack {
-                                SecureField("Personal access token",
-                                            text: $nav.githubToken)
-                                    .textFieldStyle(.roundedBorder)
-                                Button("Connect") {
-                                    github.connect(token: nav.githubToken)
-                                    nav.githubToken = ""
-                                }
-                                .controlSize(.small)
-                            }
-                            Button("Create a token") {
-                                if let url = URL(string:
-                                    "https://github.com/settings/personal-access-tokens/new") {
-                                    NSWorkspace.shared.open(url)
-                                }
-                            }
-                            .controlSize(.small)
-                            Divider()
-                            Text("For one click sign in, register an OAuth app on "
-                                 + "GitHub with device flow enabled and paste its "
-                                 + "client id here. It is a public identifier, not a "
-                                 + "secret, and no client secret is needed.")
-                                .font(.caption).foregroundStyle(.secondary)
-                            HStack {
-                                TextField("Client id", text: $prefs.d.githubClientId)
-                                    .textFieldStyle(.roundedBorder)
-                                Button("Register an app") {
-                                    if let url = URL(string:
-                                        "https://github.com/settings/applications/new") {
-                                        NSWorkspace.shared.open(url)
-                                    }
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
-                }
-                if !github.lastError.isEmpty {
-                    Text(github.lastError).font(.caption).foregroundStyle(.red)
-                }
-            }
-
-            Section("Meetings") {
-                Toggle("Reminders in the panel", isOn: $prefs.d.showReminders)
-                Toggle("Offer meeting mode when a call starts",
-                       isOn: $prefs.d.suggestMeetingMode)
-                Toggle("Meeting mode mutes audio", isOn: $prefs.d.meetingMutesAudio)
-                    .disabled(!prefs.d.suggestMeetingMode)
-                Toggle("Meeting mode holds notifications",
-                       isOn: $prefs.d.meetingSilencesNotch)
-                    .disabled(!prefs.d.suggestMeetingMode)
-                HStack {
-                    Button(calendar.authorized ? "Refresh calendars"
-                           : calendar.denied ? "Open Privacy Settings"
-                           : "Connect calendar and reminders") {
-                        calendar.authorized ? calendar.refreshSources()
-                                            : calendar.requestAccess()
-                    }
-                    .controlSize(.small)
-                    Text(calendar.authorized ? "Connected"
-                         : calendar.denied ? "Access was declined" : "Not connected")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Add a Google account") {
-                        if let url = URL(string:
-                            "x-apple.systempreferences:com.apple.Internet-Accounts-Settings"
-                            + ".extension") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                    .controlSize(.small)
-                }
-
-                if calendar.denied {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("macOS asks only once, so declining is final and the "
-                             + "button above can no longer produce a prompt. Turn "
-                             + "MacInotch on under Privacy and Security, Calendars.")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text("To be asked again instead, run this in Terminal and "
-                             + "reopen MacInotch:")
-                            .font(.caption).foregroundStyle(.secondary)
-                        HStack {
-                            Text("tccutil reset Calendar io.macinotch.app")
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                            Button("Copy") {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(
-                                    "tccutil reset Calendar io.macinotch.app",
-                                    forType: .string)
-                            }
-                            .controlSize(.small)
-                        }
-                    }
-                }
-
-                if calendar.authorized && !calendar.sources.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Which calendars to read")
-                            .font(.caption).foregroundStyle(.secondary)
-                        ForEach(calendar.sources) { choice in
-                            Toggle(isOn: Binding(
-                                get: { calendar.isEnabled(choice.id) },
-                                set: { calendar.setEnabled(choice.id, $0) })) {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Color(choice.color ?? .systemGray))
-                                        .frame(width: 8, height: 8)
-                                    Text(choice.title)
-                                    if !choice.account.isEmpty {
-                                        Text(choice.account)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Button("Sign out of calendars") {
-                        calendar.signOut()
-                        if let url = URL(string:
-                            "x-apple.systempreferences:com.apple.preference.security"
-                            + "?Privacy_Calendars") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                    .controlSize(.small)
-                    Text("Turns every calendar off here and opens the privacy pane, "
-                         + "where access itself can be revoked. macOS does not let an "
-                         + "application withdraw its own permission.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Text("Meeting mode is offered when an event with a join link starts. "
-                     + "It mutes system audio and holds notifications until the event "
-                     + "ends, then puts both back the way it found them.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section("Mail") {
-                Toggle("Mail tab in the panel", isOn: $prefs.d.showMail)
-                Toggle("Notify when new mail arrives", isOn: $prefs.d.notifyOnMail)
-                    .disabled(!prefs.d.showMail)
-                Toggle("Summarise each message", isOn: $prefs.d.mailSummaries)
-                    .disabled(!prefs.d.showMail)
-                Stepper("Show at most \(prefs.d.mailLimit)",
-                        value: $prefs.d.mailLimit, in: 3...30)
-                    .disabled(!prefs.d.showMail)
-                Toggle("Sort by what needs you first", isOn: $prefs.d.mailSortByImportance)
-                    .disabled(!prefs.d.showMail)
-                Text("Each message is sorted into needs you now, wants a reply, for "
-                     + "information, or marketing, by the same on device model. The "
-                     + "count in the tab header filters to the ones waiting on you.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text(Summarizer.onDeviceAvailable
-                     ? "Summaries are written by the model built into macOS. Nothing "
-                       + "leaves the machine and no account or key is needed."
-                     : "Apple Intelligence is not available here, so summaries fall "
-                       + "back to the opening lines of the message.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("Mail is read through Mail itself, so it needs your account added "
-                     + "in Internet Accounts and Mail running. MacInotch never sees a "
-                     + "password and holds no mail credentials of its own.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
 
             Section("Keep awake") {
                 Picker("Coffee cup lasts", selection: $prefs.d.caffeineMinutes) {
@@ -643,69 +443,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Dictation") {
-                Toggle("Hold a key to dictate a note", isOn: $prefs.d.dictationEnabled)
-                Picker("Hold", selection: $prefs.d.dictationHotKey) {
-                    ForEach(HotKey.choices) { choice in
-                        Text(choice.label).tag(choice.label)
-                    }
-                }
-                .disabled(!prefs.d.dictationEnabled)
-                Picker("Spoken language", selection: $prefs.d.dictationLocale) {
-                    Text("English").tag("en-US")
-                    Text("British English").tag("en-GB")
-                    Text("Persian").tag("fa-IR")
-                    Text("German").tag("de-DE")
-                    Text("French").tag("fr-FR")
-                    Text("Arabic").tag("ar-SA")
-                }
-                .disabled(!prefs.d.dictationEnabled)
-                HStack {
-                    Button("Apply hotkey") { Dictation.shared.installHotKey() }
-                        .controlSize(.small)
-                    Button(Dictation.shared.listening ? "Stop and save" : "Try it now") {
-                        Dictation.shared.toggle()
-                    }
-                    .controlSize(.small)
-                    if Dictation.shared.listening {
-                        Text("Listening, speak now")
-                            .font(.caption).foregroundStyle(.red)
-                    }
-                }
-                Text("Hold the key, speak, let go. There is also a microphone button "
-                     + "in the panel's quick actions row, which starts and stops on a "
-                     + "click if you would rather not hold anything. The notch draws "
-                     + "what it hears, and the note lands in your notes folder, "
-                     + "transcribed on this Mac.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
 
-            Section("Meeting notes") {
-                Toggle("Start recording when a call begins",
-                       isOn: $prefs.d.meetingAutoRecord)
-                Toggle("Capture the other side as well",
-                       isOn: $prefs.d.meetingCapturesSystemAudio)
-                Picker("Spoken language", selection: $prefs.d.meetingLocale) {
-                    Text("English").tag("en-US")
-                    Text("British English").tag("en-GB")
-                    Text("Persian").tag("fa-IR")
-                    Text("German").tag("de-DE")
-                    Text("French").tag("fr-FR")
-                    Text("Spanish").tag("es-ES")
-                    Text("Arabic").tag("ar-SA")
-                }
-                Text(MeetingRecorder.available
-                     ? "Recording is transcribed by the speech model built into macOS "
-                       + "and written up by the on device language model, then saved "
-                       + "with your notes. Nothing is uploaded and no account is used."
-                     : "This needs macOS 26 or later.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("Your microphone is always captured. Capturing the other side "
-                     + "records the audio your Mac is playing, which needs Screen "
-                     + "Recording permission. Recording a call may need everyone's "
-                     + "agreement where you are.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
 
             Section("Focus") {
                 Toggle("Focus row in the panel", isOn: $prefs.d.showFocusRow)
@@ -1299,6 +1037,280 @@ struct SettingsView: View {
 
     private var integrations: some View {
         Form {
+            Section("GitHub") {
+                Toggle("Quick actions row in the panel", isOn: $prefs.d.showQuickBar)
+                Toggle("GitHub row in the panel", isOn: $prefs.d.showGitHub)
+                Toggle("Alert when a workflow fails", isOn: $prefs.d.alertWorkflowFailure)
+
+                if github.snapshot.connected {
+                    LabeledContent("Signed in as", value: github.snapshot.login)
+                    Text(github.snapshot.summary)
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Refresh now") { Task { await github.refresh() } }
+                            .controlSize(.small)
+                        Button("Disconnect") { github.disconnect() }
+                            .controlSize(.small)
+                    }
+                } else {
+                    if github.canSignIn {
+                        if github.userCode.isEmpty {
+                            Button(github.signingIn ? "Starting" : "Sign in with GitHub") {
+                                Task { await github.signIn() }
+                            }
+                            .disabled(github.signingIn)
+                        } else {
+                            LabeledContent("Enter this code") {
+                                Text(github.userCode)
+                                    .font(.system(.title3, design: .monospaced).bold())
+                                    .textSelection(.enabled)
+                            }
+                            Text("Copied to the clipboard. The page is open in your "
+                                 + "browser and this window is waiting for it.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Button("Cancel") { github.cancelSignIn() }
+                                .controlSize(.small)
+                        }
+                    }
+
+                    DisclosureGroup("Token, or one click sign in setup") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Paste a fine grained token with read only access to "
+                                 + "Metadata, Actions, Contents and Pull requests. "
+                                 + "Select every repository you want workflow alerts "
+                                 + "for.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                SecureField("Personal access token",
+                                            text: $nav.githubToken)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Connect") {
+                                    github.connect(token: nav.githubToken)
+                                    nav.githubToken = ""
+                                }
+                                .controlSize(.small)
+                            }
+                            Button("Create a token") {
+                                if let url = URL(string:
+                                    "https://github.com/settings/personal-access-tokens/new") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                            .controlSize(.small)
+                            Divider()
+                            Text("For one click sign in, register an OAuth app on "
+                                 + "GitHub with device flow enabled and paste its "
+                                 + "client id here. It is a public identifier, not a "
+                                 + "secret, and no client secret is needed.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                TextField("Client id", text: $prefs.d.githubClientId)
+                                    .textFieldStyle(.roundedBorder)
+                                Button("Register an app") {
+                                    if let url = URL(string:
+                                        "https://github.com/settings/applications/new") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+                if !github.lastError.isEmpty {
+                    Text(github.lastError).font(.caption).foregroundStyle(.red)
+                }
+            }
+            Section("Mail") {
+                Toggle("Mail tab in the panel", isOn: $prefs.d.showMail)
+                Toggle("Notify when new mail arrives", isOn: $prefs.d.notifyOnMail)
+                    .disabled(!prefs.d.showMail)
+                Toggle("Summarise each message", isOn: $prefs.d.mailSummaries)
+                    .disabled(!prefs.d.showMail)
+                Stepper("Show at most \(prefs.d.mailLimit)",
+                        value: $prefs.d.mailLimit, in: 3...30)
+                    .disabled(!prefs.d.showMail)
+                Toggle("Sort by what needs you first", isOn: $prefs.d.mailSortByImportance)
+                    .disabled(!prefs.d.showMail)
+                Text("Each message is sorted into needs you now, wants a reply, for "
+                     + "information, or marketing, by the same on device model. The "
+                     + "count in the tab header filters to the ones waiting on you.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(Summarizer.onDeviceAvailable
+                     ? "Summaries are written by the model built into macOS. Nothing "
+                       + "leaves the machine and no account or key is needed."
+                     : "Apple Intelligence is not available here, so summaries fall "
+                       + "back to the opening lines of the message.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Mail is read through Mail itself, so it needs your account added "
+                     + "in Internet Accounts and Mail running. MacInotch never sees a "
+                     + "password and holds no mail credentials of its own.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Meetings") {
+                Toggle("Reminders in the panel", isOn: $prefs.d.showReminders)
+                Toggle("Offer meeting mode when a call starts",
+                       isOn: $prefs.d.suggestMeetingMode)
+                Toggle("Meeting mode mutes audio", isOn: $prefs.d.meetingMutesAudio)
+                    .disabled(!prefs.d.suggestMeetingMode)
+                Toggle("Meeting mode holds notifications",
+                       isOn: $prefs.d.meetingSilencesNotch)
+                    .disabled(!prefs.d.suggestMeetingMode)
+                HStack {
+                    Button(calendar.authorized ? "Refresh calendars"
+                           : calendar.denied ? "Open Privacy Settings"
+                           : "Connect calendar and reminders") {
+                        calendar.authorized ? calendar.refreshSources()
+                                            : calendar.requestAccess()
+                    }
+                    .controlSize(.small)
+                    Text(calendar.authorized ? "Connected"
+                         : calendar.denied ? "Access was declined" : "Not connected")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Add a Google account") {
+                        if let url = URL(string:
+                            "x-apple.systempreferences:com.apple.Internet-Accounts-Settings"
+                            + ".extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                }
+
+                if calendar.denied {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("macOS asks only once, so declining is final and the "
+                             + "button above can no longer produce a prompt. Turn "
+                             + "MacInotch on under Privacy and Security, Calendars.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("To be asked again instead, run this in Terminal and "
+                             + "reopen MacInotch:")
+                            .font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Text("tccutil reset Calendar io.macinotch.app")
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                            Button("Copy") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(
+                                    "tccutil reset Calendar io.macinotch.app",
+                                    forType: .string)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+
+                if calendar.authorized && !calendar.sources.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Which calendars to read")
+                            .font(.caption).foregroundStyle(.secondary)
+                        ForEach(calendar.sources) { choice in
+                            Toggle(isOn: Binding(
+                                get: { calendar.isEnabled(choice.id) },
+                                set: { calendar.setEnabled(choice.id, $0) })) {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color(choice.color ?? .systemGray))
+                                        .frame(width: 8, height: 8)
+                                    Text(choice.title)
+                                    if !choice.account.isEmpty {
+                                        Text(choice.account)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Button("Sign out of calendars") {
+                        calendar.signOut()
+                        if let url = URL(string:
+                            "x-apple.systempreferences:com.apple.preference.security"
+                            + "?Privacy_Calendars") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                    Text("Turns every calendar off here and opens the privacy pane, "
+                         + "where access itself can be revoked. macOS does not let an "
+                         + "application withdraw its own permission.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Text("Meeting mode is offered when an event with a join link starts. "
+                     + "It mutes system audio and holds notifications until the event "
+                     + "ends, then puts both back the way it found them.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Accounts") {
+                Toggle("Accounts tab in the panel", isOn: $prefs.d.showAccounts)
+                accountList
+            }
+            Section("Meeting notes") {
+                Toggle("Start recording when a call begins",
+                       isOn: $prefs.d.meetingAutoRecord)
+                Toggle("Capture the other side as well",
+                       isOn: $prefs.d.meetingCapturesSystemAudio)
+                Picker("Spoken language", selection: $prefs.d.meetingLocale) {
+                    Text("English").tag("en-US")
+                    Text("British English").tag("en-GB")
+                    Text("Persian").tag("fa-IR")
+                    Text("German").tag("de-DE")
+                    Text("French").tag("fr-FR")
+                    Text("Spanish").tag("es-ES")
+                    Text("Arabic").tag("ar-SA")
+                }
+                Text(MeetingRecorder.available
+                     ? "Recording is transcribed by the speech model built into macOS "
+                       + "and written up by the on device language model, then saved "
+                       + "with your notes. Nothing is uploaded and no account is used."
+                     : "This needs macOS 26 or later.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Your microphone is always captured. Capturing the other side "
+                     + "records the audio your Mac is playing, which needs Screen "
+                     + "Recording permission. Recording a call may need everyone's "
+                     + "agreement where you are.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Dictation") {
+                Toggle("Hold a key to dictate a note", isOn: $prefs.d.dictationEnabled)
+                Picker("Hold", selection: $prefs.d.dictationHotKey) {
+                    ForEach(HotKey.choices) { choice in
+                        Text(choice.label).tag(choice.label)
+                    }
+                }
+                .disabled(!prefs.d.dictationEnabled)
+                Picker("Spoken language", selection: $prefs.d.dictationLocale) {
+                    Text("English").tag("en-US")
+                    Text("British English").tag("en-GB")
+                    Text("Persian").tag("fa-IR")
+                    Text("German").tag("de-DE")
+                    Text("French").tag("fr-FR")
+                    Text("Arabic").tag("ar-SA")
+                }
+                .disabled(!prefs.d.dictationEnabled)
+                HStack {
+                    Button("Apply hotkey") { Dictation.shared.installHotKey() }
+                        .controlSize(.small)
+                    Button(Dictation.shared.listening ? "Stop and save" : "Try it now") {
+                        Dictation.shared.toggle()
+                    }
+                    .controlSize(.small)
+                    if Dictation.shared.listening {
+                        Text("Listening, speak now")
+                            .font(.caption).foregroundStyle(.red)
+                    }
+                }
+                Text("Hold the key, speak, let go. There is also a microphone button "
+                     + "in the panel's quick actions row, which starts and stops on a "
+                     + "click if you would rather not hold anything. The notch draws "
+                     + "what it hears, and the note lands in your notes folder, "
+                     + "transcribed on this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Mirror Notification Center") {
                 Toggle("Mirror macOS notifications into the notch",
                        isOn: $prefs.d.bridgeEnabled)
@@ -1696,13 +1708,13 @@ enum SettingsIndex {
         Entry(title: "Hotkey", tab: .general, keywords: ["hotkey", "shortcut", "key"]),
         Entry(title: "Start at login", tab: .general,
               keywords: ["login", "startup", "launch"]),
-        Entry(title: "Dictation", tab: .general,
+        Entry(title: "Dictation", tab: .integrations,
               keywords: ["dictate", "dictation", "voice", "speak", "microphone",
                          "note", "transcribe", "hold"]),
         Entry(title: "Sound cues", tab: .general,
               keywords: ["sound", "cue", "audio", "chime", "tone", "silent",
                          "mail sound", "alert sound"]),
-        Entry(title: "Meeting notes", tab: .general,
+        Entry(title: "Meeting notes", tab: .integrations,
               keywords: ["meeting", "record", "transcript", "summary", "captions"]),
         Entry(title: "Notch as a control", tab: .notch,
               keywords: ["drag", "volume", "brightness", "scrub", "strip", "control"]),
@@ -1717,16 +1729,16 @@ enum SettingsIndex {
                          "window", "reset"]),
         Entry(title: "Sessions", tab: .widgets,
               keywords: ["session", "project", "live", "active", "transcript"]),
-        Entry(title: "Accounts", tab: .widgets,
+        Entry(title: "Accounts", tab: .integrations,
               keywords: ["account", "switch", "sign in", "keychain", "codex",
                          "claude", "login"]),
-        Entry(title: "GitHub", tab: .widgets,
+        Entry(title: "GitHub", tab: .integrations,
               keywords: ["github", "token", "workflow", "pull request", "ci",
                          "contributions", "push"]),
-        Entry(title: "Mail", tab: .widgets,
+        Entry(title: "Mail", tab: .integrations,
               keywords: ["mail", "email", "inbox", "unread", "reply", "triage",
                          "summary"]),
-        Entry(title: "Meetings and reminders", tab: .widgets,
+        Entry(title: "Meetings and reminders", tab: .integrations,
               keywords: ["calendar", "meeting", "reminder", "event", "join",
                          "google", "mute"]),
         Entry(title: "Keep awake", tab: .widgets,

@@ -9,12 +9,17 @@ const BASE = process.env.GITHUB_ACTIONS === 'true' ? '/macinotch' : '';
 const CAPABILITIES: [string, string, string][] = [
   ['Vitals', 'CPU, memory, temperature, fans, power, battery, disk, network', 'sparklines, and the process behind each spike'],
   ['Mail', 'Unread mail, triaged and summarised on device', 'reply, or have the first draft written for you'],
+  ['Meetings', 'Records a call, transcribes and writes it up', 'decisions, actions and open questions, all on the machine'],
+  ['Dictation', 'Hold a key, speak, and it becomes a note', 'with a live waveform, transcribed locally'],
+  ['Work', 'Hours per project, a streak and a year of days', 'measured from your own session transcripts'],
   ['AI limits', 'Codex limits as Codex reports them, five hour and weekly', 'the pace you are burning them and when they run out'],
   ['Accounts', 'Several Codex and Claude Code sign ins in the keychain', 'switch without logging in again'],
   ['GitHub', 'Pushes, pull requests, reviews waiting, failing workflows', 'a contribution graph, and a chime when CI breaks'],
   ['Dock', 'File shelf with named piles, clipboard history', 'AirDrop, zip, screenshots and recordings caught automatically'],
   ['Fans', 'Live RPM per fan, and timed boosts through a root helper', 'clamped, deadlined, and reverted above 90 degrees'],
   ['Keep awake', 'A coffee cup that fills, steams and holds off sleep', 'draining as the time runs down'],
+  ['Control strip', 'Drag across the notch for volume or brightness', 'the one strip of screen no window covers'],
+  ['Captions', 'Live captions for whatever the Mac is playing', 'transcribed locally, kept nowhere'],
   ['Calendars', 'Gregorian, Shamsi in Farsi, Hijri, plus events and reminders', 'join links, and a meeting mode that mutes the room'],
   ['Media', 'Spotify and Apple Music', 'artwork, scrubbing, transport, volume'],
   ['Alerts', 'Disk filling, a process pinning a core, throttling, VPN', 'each fires once and rearms when it clears'],
@@ -174,6 +179,27 @@ export default function Home() {
             rather than a figure from the provider.
           </p>
         </div>
+      </Section>
+
+      <Section index="03b / Weight" title="What it costs to run." lede="Measured on the machine it was built on, not estimated.">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            ['3.9 MB', 'to download'],
+            ['10 MB', 'installed'],
+            ['~110 MB', 'dirty memory at rest'],
+          ].map(([value, label]) => (
+            <div key={label} className="rounded-xl border border-line bg-panel p-4">
+              <div className="font-display text-[22px] font-semibold tabular-nums">{value}</div>
+              <div className="mt-1 text-[13px] text-muted">{label}</div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 font-mono text-[11.5px] leading-relaxed text-faint">
+          Resident memory reads higher because the language and speech models macOS
+          provides are mapped in rather than copied. Idle processor use sits around
+          ten percent while everything is switched on, which is more than it should
+          be and is being worked on. Switching off what you do not use lowers it.
+        </p>
       </Section>
 
       <Section index="04 / Everything" title="The full surface." lede="All of it optional, all of it switchable.">

@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if temps != NotchState.shared.temps { NotchState.shared.temps = temps }
             }
         }
-        thermal.start()
+        thermal.start(interval: 12)
 
         fans = FanService { snap in
             Task { @MainActor in

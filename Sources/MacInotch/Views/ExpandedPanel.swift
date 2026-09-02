@@ -705,35 +705,12 @@ struct ExpandedPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack {
-                sectionLabel("GITHUB", action: nil)
-                Spacer()
-                Text(snap.login)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(t.tertiary)
-            }
-
-            HStack(spacing: 14) {
-                statBlock("\(snap.pushes)", "pushes today")
-                statBlock("\(snap.pullRequests)", "PRs opened")
-                statBlock("\(snap.reviewRequests)", "to review")
-                Spacer()
-            }
-
-            if !snap.contributions.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("\(snap.contributionTotal) contributions in the last year")
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(t.secondary)
-                    contributionGrid(snap.contributions)
-                }
-            }
-
-            if snap.failures.isEmpty {
+            if snap.connected && snap.failures.isEmpty {
                 Text("No failing workflows")
                     .font(.system(size: 10.5))
                     .foregroundStyle(t.tertiary)
-            } else {
+            } else if !snap.failures.isEmpty {
+                sectionLabel("FAILING", action: nil)
                 ForEach(snap.failures.prefix(4)) { failure in
                     PanelRow(id: "ghtab-\(failure.id)", title: failure.workflow,
                              subtitle: "\(failure.repo) · \(failure.ago)", theme: t,
@@ -750,6 +727,7 @@ struct ExpandedPanel: View {
                 }
             }
 
+            if snap.connected {
             HStack(spacing: 10) {
                 Button("Refresh") { Task { await github.refresh() } }
                     .buttonStyle(.plain)
@@ -769,6 +747,7 @@ struct ExpandedPanel: View {
                         .foregroundStyle(t.tertiary)
                 }
             }
+            }
         }
     }
 
@@ -777,33 +756,85 @@ struct ExpandedPanel: View {
         let weeks = stride(from: 0, to: history.days.count, by: 7).map {
             Array(history.days[$0..<min($0 + 7, history.days.count)])
         }
+        let snap = github.snapshot
+        let contributions = stride(from: 0, to: snap.contributions.count, by: 7).map {
+            Array(snap.contributions[$0..<min($0 + 7, snap.contributions.count)])
+        }
+        let showGit = snap.connected && !contributions.isEmpty
 
-        return VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 14) {
-                streakStat("\(history.streak)",
-                           history.streak == 1 ? "day running" : "days running")
-                streakStat(WorkHistory.span(history.todaySeconds), "today")
-                streakStat(WorkHistory.span(history.weekSeconds), "this week")
-                Spacer()
-                if history.bestStreak > history.streak {
-                    Text("best \(history.bestStreak)")
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(t.tertiary)
-                }
-            }
-
-            HStack(alignment: .top, spacing: 2.5) {
-                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                    VStack(spacing: 2.5) {
-                        ForEach(Array(week.enumerated()), id: \.offset) { _, day in
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .fill(heatTint(day.level))
-                                .frame(width: 8, height: 8)
-                                .help("\(WorkHistory.span(day.seconds)) on "
-                                      + Self.dayLabel.string(from: day.date))
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 12) {
+                        streakStat("\(history.streak)",
+                                   history.streak == 1 ? "day running" : "days running")
+                        streakStat(WorkHistory.span(history.todaySeconds), "today")
+                        streakStat(WorkHistory.span(history.weekSeconds), "this week")
+                        if history.bestStreak > history.streak {
+                            Text("best \(history.bestStreak)")
+                                .font(.system(size: 9.5))
+                                .foregroundStyle(t.tertiary)
                         }
                     }
+
+                    HStack(alignment: .top, spacing: 2.5) {
+                        ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                            VStack(spacing: 2.5) {
+                                ForEach(Array(week.enumerated()), id: \.offset) { _, day in
+                                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                        .fill(heatTint(day.level))
+                                        .frame(width: 7.5, height: 7.5)
+                                        .help("\(WorkHistory.span(day.seconds)) on "
+                                              + Self.dayLabel.string(from: day.date))
+                                }
+                            }
+                        }
+                    }
+
+                    Text("hours at the machine, \(state.workHistory.days.count / 7) weeks")
+                        .font(.system(size: 8.5))
+                        .foregroundStyle(t.tertiary)
                 }
+
+                if showGit {
+                    Divider().frame(height: 76).opacity(0.4)
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 12) {
+                            streakStat("\(snap.pushes)", "pushes today")
+                            streakStat("\(snap.pullRequests)", "PRs")
+                            streakStat("\(snap.reviewRequests)", "to review")
+                            Spacer(minLength: 0)
+                            Text("GITHUB")
+                                .font(.system(size: 8, weight: .bold))
+                                .tracking(0.8)
+                                .foregroundStyle(t.tertiary)
+                        }
+
+                        HStack(alignment: .top, spacing: 2.5) {
+                            ForEach(Array(contributions.suffix(26).enumerated()),
+                                    id: \.offset) { _, week in
+                                VStack(spacing: 2.5) {
+                                    ForEach(Array(week.enumerated()),
+                                            id: \.offset) { _, day in
+                                        RoundedRectangle(cornerRadius: 2,
+                                                         style: .continuous)
+                                            .fill(contributionTint(day.level))
+                                            .frame(width: 7.5, height: 7.5)
+                                            .help("\(day.count) on "
+                                                  + Self.dayLabel.string(from: day.date))
+                                    }
+                                }
+                            }
+                        }
+
+                        Text("\(snap.contributionTotal) contributions as \(snap.login)")
+                            .font(.system(size: 8.5))
+                            .foregroundStyle(t.tertiary)
+                    }
+                }
+
+                Spacer(minLength: 0)
             }
 
             Divider().opacity(0.4)
@@ -1113,6 +1144,41 @@ struct ExpandedPanel: View {
 
     private var notesTab: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if Dictation.available && p.dictationEnabled {
+                HStack(spacing: 9) {
+                    Button {
+                        SoundKit.tap()
+                        dictation.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: dictation.listening ? "mic.fill" : "mic")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(dictation.listening ? "Listening" : "Dictate a note")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundStyle(dictation.listening
+                                         ? (t.isDark ? Color.black : Color.white)
+                                         : t.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(dictation.listening
+                                                   ? t.red : t.control))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    if dictation.listening {
+                        Waveform(levels: dictation.levels, tint: t.red)
+                            .frame(height: 20)
+                    } else {
+                        Text("or hold \(p.dictationHotKey)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(t.tertiary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+
             HStack {
                 Text(notes.notes.isEmpty ? "No notes yet"
                      : "\(notes.notes.count) note\(notes.notes.count == 1 ? "" : "s")")

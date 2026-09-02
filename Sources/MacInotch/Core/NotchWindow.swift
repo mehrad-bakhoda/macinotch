@@ -137,6 +137,7 @@ final class NotchWindowController {
         let t = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.pollMouse() }
         }
+        t.tolerance = 0.02
         RunLoop.main.add(t, forMode: .common)
         hoverTimer = t
     }

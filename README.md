@@ -100,6 +100,25 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 
 ---
 
+## What it costs to run
+
+Measured on an Apple Silicon MacBook running everything at once.
+
+| | |
+|---|---|
+| Download | 3.9 MB |
+| Installed | 10 MB |
+| Dirty memory at rest | around 110 MB |
+| Idle processor use | around 10 percent with every service on |
+
+Resident memory reads far higher than the dirty figure because the speech and
+language models macOS provides are mapped in rather than copied, and those pages
+are shared. Idle processor use is higher than it ought to be for something that
+sits in the menu bar, and is being worked on: temperatures are read every twelve
+seconds rather than five, and the state mirror is rebuilt every three seconds
+while the panel is closed rather than twice a second. Turning off services you
+do not use lowers both figures.
+
 ## Install
 
 ### Download
