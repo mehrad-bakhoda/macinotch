@@ -51,28 +51,32 @@ struct NotchRootView: View {
     private var ambientSignal: AmbientSignal? {
         let p = prefs.d
         guard p.ambientGlow else { return nil }
+        guard AmbientClock.shared.stillFresh(p.ambientTimeout) else { return nil }
 
         func tint(_ hex: String, _ fallback: Color) -> Color {
             Color(hex: hex) ?? fallback
         }
 
         if p.ambientOnRecord && MeetingRecorder.shared.recording {
+            AmbientClock.shared.note("record")
             return AmbientSignal(color: tint(p.ambientColorRecord, t.red), pulses: true)
         }
         if p.ambientOnFailure && !GitHubService.shared.snapshot.failures.isEmpty {
+            AmbientClock.shared.note("failure")
             return AmbientSignal(color: tint(p.ambientColorFailure, t.red), pulses: false)
         }
-        if p.ambientOnLimit, let limits = state.usage.codexLimits {
+        if p.ambientOnLimit, let limits = state.usage.codexLimits,
+           limits.primary.usedPercent >= 80 {
+            AmbientClock.shared.note("limit-\(Int(limits.primary.usedPercent / 5))")
             if limits.primary.usedPercent >= 95 {
                 return AmbientSignal(color: tint(p.ambientColorFailure, t.red),
                                      pulses: false)
             }
-            if limits.primary.usedPercent >= 80 {
-                return AmbientSignal(color: tint(p.ambientColorLimit, t.orange),
-                                     pulses: false)
-            }
+            return AmbientSignal(color: tint(p.ambientColorLimit, t.orange),
+                                 pulses: false)
         }
         if p.ambientOnWaiting && state.hasAttention {
+            AmbientClock.shared.note("waiting")
             return AmbientSignal(color: tint(p.ambientColorWaiting, t.accent),
                                  pulses: true)
         }

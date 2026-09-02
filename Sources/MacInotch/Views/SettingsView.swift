@@ -123,7 +123,26 @@ struct SettingsView: View {
         if !nav.settingsSearch.isEmpty {
             searchResults
         } else {
-            tabContent
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: nav.tab.symbol)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.tint)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(nav.tab.rawValue)
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(tabBlurb)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+
+                tabContent
+            }
         }
     }
 
@@ -165,6 +184,26 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var tabBlurb: String {
+        switch nav.tab {
+        case .general:
+            return "How it looks and sounds, and the keys that reach it."
+        case .widgets:
+            return "What appears in the panel, and where each figure comes from."
+        case .notch:
+            return "The shape itself: its size, what it does when you drag it, "
+                + "and what it can say with a colour."
+        case .fans:
+            return "Live fan speeds, and timed boosts through the helper."
+        case .alerts:
+            return "What is worth interrupting you for."
+        case .history:
+            return "Everything the notch has shown, searchable."
+        case .integrations:
+            return "Permissions, hooks and the config file."
+        }
     }
 
     @ViewBuilder private var tabContent: some View {
@@ -583,6 +622,25 @@ struct SettingsView: View {
                             .buttonStyle(.borderless)
                     }
                 }
+            }
+
+            Section("Panel behaviour") {
+                Toggle("Collapse when the pointer leaves", isOn: $prefs.d.autoCollapse)
+                LabeledContent("Wait before collapsing") {
+                    HStack {
+                        Slider(value: $prefs.d.collapseDelay, in: 0...5, step: 0.25)
+                            .frame(width: 140)
+                        Text(prefs.d.collapseDelay == 0 ? "at once"
+                             : String(format: "%.2gs", prefs.d.collapseDelay))
+                            .font(.caption).monospacedDigit()
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+                .disabled(!prefs.d.autoCollapse)
+                Text("Turning it off keeps the panel open until you click away, "
+                     + "which helps if reaching a control before it closes is a "
+                     + "fight.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Dictation") {
@@ -1398,6 +1456,16 @@ struct SettingsView: View {
             }
             LabeledContent("Pulse speed") {
                 Slider(value: $prefs.d.ambientSpeed, in: 0.3...2.5).frame(width: 150)
+            }
+            LabeledContent("Fade after") {
+                HStack {
+                    Slider(value: $prefs.d.ambientTimeout, in: 0...300, step: 15)
+                        .frame(width: 110)
+                    Text(prefs.d.ambientTimeout == 0 ? "never"
+                         : "\(Int(prefs.d.ambientTimeout))s")
+                        .font(.caption).monospacedDigit()
+                        .frame(width: 44, alignment: .trailing)
+                }
             }
 
             Divider()

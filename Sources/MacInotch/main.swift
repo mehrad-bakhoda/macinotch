@@ -204,13 +204,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         GitHubService.shared.start()
         MailService.shared.start()
         Dictation.shared.installHotKey()
-        projectTime = ProjectTime { spans in
+        projectTime = ProjectTime(onUpdate: { spans in
             Task { @MainActor in
                 if spans != NotchState.shared.projectTime {
                     NotchState.shared.projectTime = spans
                 }
             }
-        }
+        }, onHistory: { history in
+            Task { @MainActor in
+                if history != NotchState.shared.workHistory {
+                    NotchState.shared.workHistory = history
+                }
+            }
+        })
         projectTime.start()
         if DemoData.enabled {
             usage.stop()

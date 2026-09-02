@@ -99,6 +99,7 @@ final class NotchState: ObservableObject {
     @Published var dockSection: DockSection = .files
     @Published var sessions: [CodeSession] = []
     @Published var projectTime: [ProjectSpan] = []
+    @Published var workHistory = WorkHistory()
 
     @Published var notchSize: CGSize = CGSize(width: 200, height: 32)
 
@@ -443,7 +444,18 @@ final class NotchState: ObservableObject {
         } else {
 
             for i in items.indices where items[i].kind == .attention { items[i].acknowledged = true }
-            settle()
+            guard prefs.autoCollapse else { return }
+
+            let delay = prefs.collapseDelay
+            guard delay > 0 else { settle(); return }
+
+            peekTask?.cancel()
+            peekTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                guard !Task.isCancelled, let self, !self.hovering,
+                      !self.pinned else { return }
+                self.settle()
+            }
         }
     }
 

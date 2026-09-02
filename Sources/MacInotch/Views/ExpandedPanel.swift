@@ -198,17 +198,6 @@ struct ExpandedPanel: View {
                 }
             }
 
-            if Dictation.available && p.dictationEnabled {
-                QuickButton(symbol: dictation.listening ? "mic.fill" : "mic",
-                            label: dictation.listening
-                                ? "Listening, click to finish"
-                                : "Dictate a note, or hold \(p.dictationHotKey)",
-                            tint: t.red, on: dictation.listening,
-                            dim: false, theme: t) {
-                    dictation.toggle()
-                }
-            }
-
             QuickButton(symbol: capture.recording ? "stop.fill" : "record.circle",
                         label: capture.recording ? "Stop recording" : "Record screen",
                         tint: t.red, on: capture.recording, dim: false, theme: t) {
@@ -437,7 +426,7 @@ struct ExpandedPanel: View {
             case .sessions: return p.showSessions
             case .accounts: return p.showAccounts
             case .github:   return p.showGitHub
-                || !state.projectTime.isEmpty
+                || !state.projectTime.isEmpty || !state.workHistory.days.isEmpty
             case .mail:     return p.showMail
             case .notes:    return p.showNotes
             default:        return true
@@ -705,6 +694,7 @@ struct ExpandedPanel: View {
     private var githubTab: some View {
         let snap = github.snapshot
         return VStack(alignment: .leading, spacing: 11) {
+            if !state.workHistory.days.isEmpty { streakSection }
             if !state.projectTime.isEmpty { projectTimeSection }
 
             if !snap.connected {
@@ -782,6 +772,66 @@ struct ExpandedPanel: View {
         }
     }
 
+    private var streakSection: some View {
+        let history = state.workHistory
+        let weeks = stride(from: 0, to: history.days.count, by: 7).map {
+            Array(history.days[$0..<min($0 + 7, history.days.count)])
+        }
+
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 14) {
+                streakStat("\(history.streak)",
+                           history.streak == 1 ? "day running" : "days running")
+                streakStat(WorkHistory.span(history.todaySeconds), "today")
+                streakStat(WorkHistory.span(history.weekSeconds), "this week")
+                Spacer()
+                if history.bestStreak > history.streak {
+                    Text("best \(history.bestStreak)")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(t.tertiary)
+                }
+            }
+
+            HStack(alignment: .top, spacing: 2.5) {
+                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                    VStack(spacing: 2.5) {
+                        ForEach(Array(week.enumerated()), id: \.offset) { _, day in
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(heatTint(day.level))
+                                .frame(width: 8, height: 8)
+                                .help("\(WorkHistory.span(day.seconds)) on "
+                                      + Self.dayLabel.string(from: day.date))
+                        }
+                    }
+                }
+            }
+
+            Divider().opacity(0.4)
+        }
+    }
+
+    private func streakStat(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(t.primary)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 8.5))
+                .foregroundStyle(t.tertiary)
+        }
+    }
+
+    private func heatTint(_ level: Int) -> Color {
+        switch level {
+        case 1: return t.accent.opacity(0.28)
+        case 2: return t.accent.opacity(0.5)
+        case 3: return t.accent.opacity(0.75)
+        case 4: return t.accent
+        default: return t.wellFill
+        }
+    }
+
     private var projectTimeSection: some View {
         let spans = state.projectTime
         let total = spans.reduce(0) { $0 + $1.seconds }
@@ -789,10 +839,12 @@ struct ExpandedPanel: View {
 
         return VStack(alignment: .leading, spacing: 7) {
             HStack {
-                sectionLabel("TIME TODAY", action: nil)
+                sectionLabel("TIME PER PROJECT", action: nil)
                 Spacer()
-                Text(ProjectSpan(name: "", seconds: total, messages: 0,
-                                 providers: []).text)
+                Text(total > state.workHistory.todaySeconds * 1.1
+                     ? "\(ProjectSpan(name: "", seconds: total, messages: 0, providers: []).text) attributed"
+                     : ProjectSpan(name: "", seconds: total, messages: 0,
+                                   providers: []).text)
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(t.tertiary)
             }
@@ -827,8 +879,10 @@ struct ExpandedPanel: View {
                 }
             }
 
-            Text("Measured from your own session transcripts, counting only gaps "
-                 + "shorter than ten minutes as work.")
+            Text("From your own session transcripts, counting gaps under ten "
+                 + "minutes as work. Projects worked in parallel are each credited "
+                 + "in full, so these can add up to more than the "
+                 + "\(WorkHistory.span(state.workHistory.todaySeconds)) above.")
                 .font(.system(size: 9))
                 .foregroundStyle(t.tertiary)
 

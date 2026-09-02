@@ -98,6 +98,9 @@ struct PrefsData: Codable, Equatable {
     var dictationEnabled     = true
     var dictationHotKey      = "⌥Space"
     var dictationLocale      = "en-US"
+    var autoCollapse         = true
+    var collapseDelay        = 0.0
+    var ambientTimeout       = 45.0
     var cueMail              = "mail"
     var cueBuildFailure      = "failure"
     var cueLimitWarning      = "attention"
