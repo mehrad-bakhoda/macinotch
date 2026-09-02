@@ -1,5 +1,42 @@
 import AppKit
 
+enum SoundCue: String, CaseIterable, Identifiable {
+    case mail
+    case buildFailure
+    case limitWarning
+    case availableAgain
+    case attention
+    case systemAlert
+    case dictation
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .mail: return "Mail arrives"
+        case .buildFailure: return "A workflow fails"
+        case .limitWarning: return "A limit is close"
+        case .availableAgain: return "Something is usable again"
+        case .attention: return "Claude Code wants you"
+        case .systemAlert: return "The machine needs attention"
+        case .dictation: return "A dictated note is saved"
+        }
+    }
+
+    @MainActor var chosen: String {
+        let p = Prefs.shared.d
+        switch self {
+        case .mail: return p.cueMail
+        case .buildFailure: return p.cueBuildFailure
+        case .limitWarning: return p.cueLimitWarning
+        case .availableAgain: return p.cueAvailableAgain
+        case .attention: return p.cueAttention
+        case .systemAlert: return p.cueSystemAlert
+        case .dictation: return p.cueDictation
+        }
+    }
+}
+
 @MainActor
 enum SoundKit {
     private static var cache: [String: NSSound] = [:]
@@ -21,7 +58,15 @@ enum SoundKit {
         sound(named: bundledName(for: kind))?.play()
     }
 
-    static let bundledNames = ["notify", "success", "attention", "error", "tick"]
+    static let bundledNames = ["notify", "success", "attention", "error",
+                               "tick", "mail", "failure", "ready"]
+
+    static func play(cue: SoundCue) {
+        guard Prefs.shared.d.soundSet != "silent" else { return }
+        let name = cue.chosen
+        guard name != "none" else { return }
+        sound(named: name)?.play()
+    }
 
     static func tap(_ pattern: NSHapticFeedbackManager.FeedbackPattern = .generic) {
         guard Prefs.shared.d.haptics else { return }

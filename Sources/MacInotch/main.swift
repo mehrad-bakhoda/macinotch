@@ -451,7 +451,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         p.title = "Codex \(window.label) limit reset"
         p.body = "Back to \(Int(window.usedPercent))% used, next reset in \(window.remainingText)"
         p.timeout = 8
-        p.sound = true
+        p.sound = false
+        SoundKit.play(cue: .availableAgain)
         NotchState.shared.handle(p)
     }
 
@@ -477,7 +478,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         p.timeout = mark >= 95 ? 14 : 10
-        p.sound = true
+        p.sound = false
+        SoundKit.play(cue: .limitWarning)
         NotchState.shared.handle(p)
     }
 
@@ -493,11 +495,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if blocked {
             guard Prefs.shared.d.notifyOnUsageThreshold else { return }
+            p.sound = false
+            SoundKit.play(cue: .limitWarning)
             p.kind = "warning"
             p.title = "Claude Code \(limit.label) limit reached"
             p.body = "Back in \(limit.remainingText)"
         } else {
             guard Prefs.shared.d.notifyOnUsageReset else { return }
+            p.sound = false
+            SoundKit.play(cue: .availableAgain)
             p.kind = "success"
             p.title = "Claude Code is available again"
             p.body = "The \(limit.label) window has reset"

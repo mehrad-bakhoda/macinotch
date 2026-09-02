@@ -96,8 +96,15 @@ struct PrefsData: Codable, Equatable {
     var claudePeakMessages   = 0
     var rowsBeforeScrolling  = 7
     var dictationEnabled     = true
-    var dictationHotKey      = "⌃⌥D"
+    var dictationHotKey      = "⌥Space"
     var dictationLocale      = "en-US"
+    var cueMail              = "mail"
+    var cueBuildFailure      = "failure"
+    var cueLimitWarning      = "attention"
+    var cueAvailableAgain    = "ready"
+    var cueAttention         = "attention"
+    var cueSystemAlert       = "error"
+    var cueDictation         = "tick"
     var calendarsExcluded: [String] = []
     var caffeineMinutes      = 60.0
     var caffeineKeepsDisplayOn = true

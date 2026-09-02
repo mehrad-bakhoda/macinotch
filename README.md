@@ -89,8 +89,10 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - Warnings for a filling disk, a runaway process, throttling and battery health
 - Screen recording started from the shelf, with the file parked there when done
 - Focus state in the panel, toggled through a Shortcut you choose
-- Hold a key to dictate a note, transcribed on the machine, with the notch
-  showing what it hears as a waveform
+- Hold a key, or click the microphone in the panel, to dictate a note,
+  transcribed on the machine, with the notch drawing what it hears
+- A different sound per event, so mail, a failed workflow and a spent limit are
+  tellable apart without looking
 - Notification history, searchable and persistent
 - An optional outline round the notch carrying one state as colour, in a soft
   glow, a hairline or a sweep, each trigger switchable and separately coloured

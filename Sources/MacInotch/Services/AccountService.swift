@@ -577,7 +577,8 @@ final class AccountService: ObservableObject {
             p.title = "\(account.label) has reset"
             p.body = "That account is back to zero. Switch to it when you need it."
             p.timeout = 12
-            p.sound = true
+            p.sound = false
+            SoundKit.play(cue: .availableAgain)
             p.actions = [NotchAction(label: "Switch to it",
                                      url: "macinotch://switch?account=\(account.id)")]
             NotchState.shared.handle(p)

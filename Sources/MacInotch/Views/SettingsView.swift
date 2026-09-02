@@ -27,6 +27,7 @@ struct SettingsView: View {
     @ObservedObject private var weather = WeatherService.shared
     @ObservedObject private var themes = ThemeManager.shared
     @ObservedObject private var github = GitHubService.shared
+    @ObservedObject private var dictation = Dictation.shared
     @ObservedObject private var switcher = AccountService.shared
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -492,6 +493,26 @@ struct SettingsView: View {
                 if prefs.d.ambientGlow { ambientControls }
             }
 
+            Section("Sound cues") {
+                Text("A different sound per event, so what happened is audible "
+                     + "without looking.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(SoundCue.allCases) { cue in
+                    HStack {
+                        Picker(cue.label, selection: cueBinding(cue)) {
+                            Text("Silent").tag("none")
+                            ForEach(SoundKit.bundledNames, id: \.self) { name in
+                                Text(name.capitalized).tag(name)
+                            }
+                        }
+                        Button {
+                            SoundKit.play(cue: cue)
+                        } label: { Image(systemName: "play.circle") }
+                            .buttonStyle(.borderless)
+                    }
+                }
+            }
+
             Section("Dictation") {
                 Toggle("Hold a key to dictate a note", isOn: $prefs.d.dictationEnabled)
                 Picker("Hold", selection: $prefs.d.dictationHotKey) {
@@ -509,11 +530,23 @@ struct SettingsView: View {
                     Text("Arabic").tag("ar-SA")
                 }
                 .disabled(!prefs.d.dictationEnabled)
-                Button("Apply hotkey") { Dictation.shared.installHotKey() }
+                HStack {
+                    Button("Apply hotkey") { Dictation.shared.installHotKey() }
+                        .controlSize(.small)
+                    Button(Dictation.shared.listening ? "Stop and save" : "Try it now") {
+                        Dictation.shared.toggle()
+                    }
                     .controlSize(.small)
-                Text("Hold the key, speak, let go. The notch shows what it is hearing "
-                     + "as a waveform, and the note lands in your notes folder. "
-                     + "Transcribed on this Mac.")
+                    if Dictation.shared.listening {
+                        Text("Listening, speak now")
+                            .font(.caption).foregroundStyle(.red)
+                    }
+                }
+                Text("Hold the key, speak, let go. There is also a microphone button "
+                     + "in the panel's quick actions row, which starts and stops on a "
+                     + "click if you would rather not hold anything. The notch draws "
+                     + "what it hears, and the note lands in your notes folder, "
+                     + "transcribed on this Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -1331,6 +1364,18 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(.leading, 6)
+    }
+
+    private func cueBinding(_ cue: SoundCue) -> Binding<String> {
+        switch cue {
+        case .mail: return $prefs.d.cueMail
+        case .buildFailure: return $prefs.d.cueBuildFailure
+        case .limitWarning: return $prefs.d.cueLimitWarning
+        case .availableAgain: return $prefs.d.cueAvailableAgain
+        case .attention: return $prefs.d.cueAttention
+        case .systemAlert: return $prefs.d.cueSystemAlert
+        case .dictation: return $prefs.d.cueDictation
+        }
     }
 
     private var accountList: some View {

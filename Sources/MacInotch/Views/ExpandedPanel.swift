@@ -198,6 +198,17 @@ struct ExpandedPanel: View {
                 }
             }
 
+            if Dictation.available && p.dictationEnabled {
+                QuickButton(symbol: dictation.listening ? "mic.fill" : "mic",
+                            label: dictation.listening
+                                ? "Listening, click to finish"
+                                : "Dictate a note, or hold \(p.dictationHotKey)",
+                            tint: t.red, on: dictation.listening,
+                            dim: false, theme: t) {
+                    dictation.toggle()
+                }
+            }
+
             QuickButton(symbol: capture.recording ? "stop.fill" : "record.circle",
                         label: capture.recording ? "Stop recording" : "Record screen",
                         tint: t.red, on: capture.recording, dim: false, theme: t) {

@@ -420,7 +420,8 @@ final class GitHubService: ObservableObject {
             p.title = "\(failure.workflow) failed"
             p.body = "\(failure.repo)\(failure.branch.isEmpty ? "" : " on \(failure.branch)")"
             p.timeout = 20
-            p.sound = true
+            p.sound = false
+            SoundKit.play(cue: .buildFailure)
             p.actions = [NotchAction(label: "Open run", url: failure.url)]
             NotchState.shared.handle(p)
         }

@@ -267,7 +267,8 @@ final class Dictation: ObservableObject {
         p.title = "Note saved"
         p.body = String(spoken.prefix(90))
         p.timeout = 8
-        p.sound = true
+        p.sound = false
+        SoundKit.play(cue: .dictation)
         NotchState.shared.handle(p)
     }
 }

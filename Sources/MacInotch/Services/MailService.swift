@@ -143,7 +143,8 @@ final class MailService: ObservableObject {
             p.title = message.sender
             p.body = message.subject
             p.timeout = message.important ? 20 : 10
-            p.sound = true
+            p.sound = false
+            SoundKit.play(cue: .mail)
             p.actions = [NotchAction(label: "Read it",
                                      url: "macinotch://tab?name=mail")]
             NotchState.shared.handle(p)

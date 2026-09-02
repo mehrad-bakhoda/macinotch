@@ -69,6 +69,12 @@ final class HotKey {
         Choice(label: "F14", keyCode: UInt32(kVK_F14), modifiers: 0),
         Choice(label: "⌃⌥V", keyCode: UInt32(kVK_ANSI_V),
                modifiers: UInt32(controlKey | optionKey)),
+        Choice(label: "⌥Space", keyCode: UInt32(kVK_Space),
+               modifiers: UInt32(optionKey)),
+        Choice(label: "⌥D", keyCode: UInt32(kVK_ANSI_D),
+               modifiers: UInt32(optionKey)),
+        Choice(label: "F15", keyCode: UInt32(kVK_F15), modifiers: 0),
+        Choice(label: "F16", keyCode: UInt32(kVK_F16), modifiers: 0),
     ]
 
     static func choice(named label: String) -> Choice? {

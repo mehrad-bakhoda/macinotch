@@ -33,7 +33,8 @@ final class AlertService: ObservableObject {
         p.title = title
         p.body = body
         p.timeout = 12
-        p.sound = true
+        p.sound = false
+        SoundKit.play(cue: .systemAlert)
         if !actions.isEmpty { p.actions = actions }
         NotchState.shared.handle(p)
     }
