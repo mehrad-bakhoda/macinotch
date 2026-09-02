@@ -492,6 +492,31 @@ struct SettingsView: View {
                 if prefs.d.ambientGlow { ambientControls }
             }
 
+            Section("Dictation") {
+                Toggle("Hold a key to dictate a note", isOn: $prefs.d.dictationEnabled)
+                Picker("Hold", selection: $prefs.d.dictationHotKey) {
+                    ForEach(HotKey.choices) { choice in
+                        Text(choice.label).tag(choice.label)
+                    }
+                }
+                .disabled(!prefs.d.dictationEnabled)
+                Picker("Spoken language", selection: $prefs.d.dictationLocale) {
+                    Text("English").tag("en-US")
+                    Text("British English").tag("en-GB")
+                    Text("Persian").tag("fa-IR")
+                    Text("German").tag("de-DE")
+                    Text("French").tag("fr-FR")
+                    Text("Arabic").tag("ar-SA")
+                }
+                .disabled(!prefs.d.dictationEnabled)
+                Button("Apply hotkey") { Dictation.shared.installHotKey() }
+                    .controlSize(.small)
+                Text("Hold the key, speak, let go. The notch shows what it is hearing "
+                     + "as a waveform, and the note lands in your notes folder. "
+                     + "Transcribed on this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Meeting notes") {
                 Toggle("Start recording when a call begins",
                        isOn: $prefs.d.meetingAutoRecord)

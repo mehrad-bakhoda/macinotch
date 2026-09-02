@@ -67,7 +67,8 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
   what wants a reply, what is only information and what is marketing, each with
   a one sentence summary written on device, and a reply box that can draft the
   answer for you to edit.
-- **GitHub**, today's pushes, pull requests and reviews waiting on you, a
+- **Work**, how long you spent in each project today, measured from your own
+  session transcripts, alongside today's pushes, pull requests and reviews waiting on you, a
   contribution graph and any failing workflows.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
   counts, token spend and a live indicator driven by whether the process is
@@ -88,6 +89,8 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - Warnings for a filling disk, a runaway process, throttling and battery health
 - Screen recording started from the shelf, with the file parked there when done
 - Focus state in the panel, toggled through a Shortcut you choose
+- Hold a key to dictate a note, transcribed on the machine, with the notch
+  showing what it hears as a waveform
 - Notification history, searchable and persistent
 - An optional outline round the notch carrying one state as colour, in a soft
   glow, a hairline or a sweep, each trigger switchable and separately coloured

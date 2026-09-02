@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var repo: RepoService!
     private var screenshots: ScreenshotWatcher!
     private var sessionService: SessionService!
+    private var projectTime: ProjectTime!
     private let sessionGate = Flag(true)
     private let sessionClaudeGate = Flag(true)
     private let sessionCodexGate = Flag(true)
@@ -202,6 +203,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MeetingMode.shared.start()
         GitHubService.shared.start()
         MailService.shared.start()
+        Dictation.shared.installHotKey()
+        projectTime = ProjectTime { spans in
+            Task { @MainActor in
+                if spans != NotchState.shared.projectTime {
+                    NotchState.shared.projectTime = spans
+                }
+            }
+        }
+        projectTime.start()
         if DemoData.enabled {
             usage.stop()
             sessionService.stop()

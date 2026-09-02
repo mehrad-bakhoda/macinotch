@@ -95,6 +95,9 @@ struct PrefsData: Codable, Equatable {
     var claudePeakTokens     = 0
     var claudePeakMessages   = 0
     var rowsBeforeScrolling  = 7
+    var dictationEnabled     = true
+    var dictationHotKey      = "⌃⌥D"
+    var dictationLocale      = "en-US"
     var calendarsExcluded: [String] = []
     var caffeineMinutes      = 60.0
     var caffeineKeepsDisplayOn = true

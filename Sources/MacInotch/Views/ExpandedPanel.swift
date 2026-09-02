@@ -36,6 +36,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var caffeine = CaffeineService.shared
     @ObservedObject private var mail = MailService.shared
     @ObservedObject private var recorder = MeetingRecorder.shared
+    @ObservedObject private var dictation = Dictation.shared
 
     private var p: PrefsData { prefs.d }
     private var t: Theme { themes.theme }
@@ -424,7 +425,8 @@ struct ExpandedPanel: View {
             switch tab {
             case .sessions: return p.showSessions
             case .accounts: return p.showAccounts
-            case .github:   return p.showGitHub && github.snapshot.connected
+            case .github:   return p.showGitHub
+                || !state.projectTime.isEmpty
             case .mail:     return p.showMail
             case .notes:    return p.showNotes
             default:        return true
@@ -692,6 +694,16 @@ struct ExpandedPanel: View {
     private var githubTab: some View {
         let snap = github.snapshot
         return VStack(alignment: .leading, spacing: 11) {
+            if !state.projectTime.isEmpty { projectTimeSection }
+
+            if !snap.connected {
+                Text("Connect GitHub from the quick actions row to see pushes, "
+                     + "reviews and failing workflows here too.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(t.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             HStack {
                 sectionLabel("GITHUB", action: nil)
                 Spacer()
@@ -756,6 +768,60 @@ struct ExpandedPanel: View {
                         .foregroundStyle(t.tertiary)
                 }
             }
+        }
+    }
+
+    private var projectTimeSection: some View {
+        let spans = state.projectTime
+        let total = spans.reduce(0) { $0 + $1.seconds }
+        let widest = max(1, spans.first?.seconds ?? 1)
+
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                sectionLabel("TIME TODAY", action: nil)
+                Spacer()
+                Text(ProjectSpan(name: "", seconds: total, messages: 0,
+                                 providers: []).text)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(t.tertiary)
+            }
+
+            ForEach(Array(spans.prefix(6))) { span in
+                HStack(spacing: 8) {
+                    Text(span.name)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(t.primary)
+                        .lineLimit(1)
+                        .frame(width: 96, alignment: .leading)
+
+                    GeometryReader { geo in
+                        Capsule()
+                            .fill(t.wellFill)
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(span.providers.contains("claude")
+                                          ? NotchSource.claude.tint(t)
+                                          : NotchSource.chatgpt.tint(t))
+                                    .frame(width: max(4, geo.size.width
+                                                      * (span.seconds / widest)))
+                            }
+                    }
+                    .frame(height: 5)
+
+                    Text(span.text)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(t.secondary)
+                        .monospacedDigit()
+                        .frame(width: 52, alignment: .trailing)
+                }
+            }
+
+            Text("Measured from your own session transcripts, counting only gaps "
+                 + "shorter than ten minutes as work.")
+                .font(.system(size: 9))
+                .foregroundStyle(t.tertiary)
+
+            Divider().opacity(0.4)
         }
     }
 
@@ -1983,6 +2049,42 @@ struct ExpandedPanel: View {
                              trailing: { EmptyView() })
                 )))
             }
+        }
+
+        if dictation.listening {
+            out.append(RowSpec(id: "dictation", view: AnyView(
+                HStack(spacing: 10) {
+                    IconBadge(symbol: "mic.fill", tint: t.red, theme: t)
+                    Waveform(levels: dictation.levels, tint: t.red)
+                        .frame(height: 26)
+                    Text(dictation.text.isEmpty ? "Listening"
+                         : String(dictation.text.suffix(40)))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(t.secondary)
+                        .lineLimit(1)
+                        .frame(width: 150, alignment: .trailing)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+            )))
+        }
+
+        if dictation.listening {
+            out.append(RowSpec(id: "dictation", view: AnyView(
+                HStack(spacing: 10) {
+                    IconBadge(symbol: "mic.fill", tint: t.red, theme: t)
+                    Waveform(levels: dictation.levels, tint: t.red)
+                        .frame(height: 26)
+                    Text(dictation.text.isEmpty ? "Listening"
+                         : String(dictation.text.suffix(40)))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(t.secondary)
+                        .lineLimit(1)
+                        .frame(width: 150, alignment: .trailing)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+            )))
         }
 
         if recorder.captioning {

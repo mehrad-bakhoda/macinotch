@@ -31,7 +31,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .dock: return "Dock"
         case .sessions: return "Sessions"
         case .accounts: return "Accounts"
-        case .github: return "GitHub"
+        case .github: return "Work"
         case .mail: return "Mail"
         case .notes: return "Notes"
         }
@@ -42,7 +42,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .dock: return "tray.full"
         case .sessions: return "sparkles"
         case .accounts: return "person.2"
-        case .github: return "chevron.left.forwardslash.chevron.right"
+        case .github: return "chart.bar.doc.horizontal"
         case .mail: return "envelope"
         case .notes: return "note.text"
         }
@@ -98,6 +98,7 @@ final class NotchState: ObservableObject {
     @Published var panelTab: PanelTab = .home
     @Published var dockSection: DockSection = .files
     @Published var sessions: [CodeSession] = []
+    @Published var projectTime: [ProjectSpan] = []
 
     @Published var notchSize: CGSize = CGSize(width: 200, height: 32)
 
