@@ -474,6 +474,27 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Notch as a control") {
+                Toggle("Drag across the notch to adjust", isOn: $prefs.d.stripEnabled)
+                Picker("Dragging changes", selection: $prefs.d.stripDefault) {
+                    Text("Volume").tag("volume")
+                    Text("Brightness").tag("brightness")
+                    Text("Track position").tag("scrub")
+                }
+                .disabled(!prefs.d.stripEnabled)
+                Text("Hold option while dragging for brightness, shift for the track "
+                     + "position. Brightness goes through a private display interface, "
+                     + "so it may stop working after a system update, and does nothing "
+                     + "rather than failing loudly.")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                Toggle("Trace the notch with a status colour", isOn: $prefs.d.ambientGlow)
+                Text("Red for a failed workflow or a spent limit, amber as one gets "
+                     + "close, and a slow pulse while recording or when Claude Code is "
+                     + "waiting on you.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Meeting notes") {
                 Toggle("Start recording when a call begins",
                        isOn: $prefs.d.meetingAutoRecord)

@@ -48,6 +48,9 @@ struct PrefsData: Codable, Equatable {
     var meetingLocale   = "en-US"
     var meetingCapturesSystemAudio = true
     var meetingAutoRecord = false
+    var stripEnabled     = true
+    var stripDefault     = "volume"
+    var ambientGlow      = true
     var showNotes       = true
     var menuBarHiding   = false
     var menuBarHidden   = false

@@ -16,6 +16,8 @@ final class MeetingRecorder: NSObject, ObservableObject {
     @Published private(set) var working = false
     @Published var lastError = ""
     @Published private(set) var lastNote: String?
+    @Published private(set) var captioning = false
+    @Published private(set) var caption = ""
 
     private var engine: AVAudioEngine?
     private var stream: SCStream?
@@ -26,6 +28,7 @@ final class MeetingRecorder: NSObject, ObservableObject {
     private var target: AVAudioFormat?
     private var collector: Task<Void, Never>?
     private var title = "Meeting"
+    private var captionsMode = false
 
     private override init() { super.init() }
 
@@ -42,12 +45,32 @@ final class MeetingRecorder: NSObject, ObservableObject {
         return false
     }
 
+    func toggleCaptions() {
+        captioning ? Task { await stopCaptions() } : Task { await startCaptions() }
+    }
+
+    func startCaptions() async {
+        guard !recording, !captioning, Self.available else { return }
+        captioning = true
+        caption = ""
+        await start(title: "Captions", captionsOnly: true)
+        if !recording { captioning = false }
+    }
+
+    func stopCaptions() async {
+        guard captioning else { return }
+        captioning = false
+        caption = ""
+        await stop(discard: true)
+    }
+
     func toggle(title name: String) {
         recording ? Task { await stop() } : Task { await start(title: name) }
     }
 
-    func start(title name: String) async {
+    func start(title name: String, captionsOnly: Bool = false) async {
         guard !recording, Self.available else { return }
+        captionsMode = captionsOnly
         title = name.isEmpty ? "Meeting" : name
         transcript = ""
         lastError = ""
@@ -96,10 +119,15 @@ final class MeetingRecorder: NSObject, ObservableObject {
         collector = Task { [weak self] in
             guard let self else { return }
             do {
-                for try await result in speech.results where result.isFinal {
+                for try await result in speech.results {
                     let piece = String(result.text.characters)
                     await MainActor.run {
-                        self.transcript += piece
+                        if result.isFinal {
+                            self.transcript += piece
+                            self.caption = String((self.transcript.suffix(220)))
+                        } else if self.captionsMode {
+                            self.caption = String((self.transcript + piece).suffix(220))
+                        }
                     }
                 }
             } catch {}
@@ -184,7 +212,7 @@ final class MeetingRecorder: NSObject, ObservableObject {
         continuation.yield(out)
     }
 
-    func stop() async {
+    func stop(discard: Bool = false) async {
         guard recording else { return }
         recording = false
         status = "Writing it up"
@@ -208,6 +236,15 @@ final class MeetingRecorder: NSObject, ObservableObject {
         #endif
         collector?.cancel()
         collector = nil
+
+        if discard || captionsMode {
+            transcript = ""
+            caption = ""
+            captionsMode = false
+            status = ""
+            startedAt = nil
+            return
+        }
 
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         let minutes = Int((Date().timeIntervalSince(startedAt ?? Date())) / 60)

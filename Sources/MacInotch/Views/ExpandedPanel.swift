@@ -126,11 +126,20 @@ struct ExpandedPanel: View {
             }
             .contextMenu {
                 if MeetingRecorder.available {
-                    if recorder.recording {
+                    if recorder.captioning {
+                        Button("Stop captions") {
+                            Task { await recorder.stopCaptions() }
+                        }
+                    } else if !recorder.recording {
+                        Button("Live captions") {
+                            Task { await recorder.startCaptions() }
+                        }
+                    }
+                    if recorder.recording && !recorder.captioning {
                         Button("Stop and write it up") {
                             Task { await recorder.stop() }
                         }
-                    } else {
+                    } else if !recorder.captioning {
                         Button("Record and write it up") {
                             let name = calendar.next?.title ?? "Meeting"
                             Task { await recorder.start(title: name) }
@@ -1947,7 +1956,27 @@ struct ExpandedPanel: View {
             }
         }
 
-        if recorder.recording || recorder.working {
+        if recorder.captioning {
+            out.append(RowSpec(id: "captions", view: AnyView(
+                PanelRow(id: "captions", title: "Live captions",
+                         subtitle: recorder.caption.isEmpty
+                             ? "Listening to what your Mac is playing"
+                             : recorder.caption,
+                         theme: t,
+                         onTap: { Task { await recorder.stopCaptions() } },
+                         leading: {
+                             IconBadge(symbol: "captions.bubble.fill",
+                                       tint: t.teal, theme: t)
+                         },
+                         trailing: {
+                             Text("Stop")
+                                 .font(.system(size: 10, weight: .semibold))
+                                 .foregroundStyle(t.accent)
+                         })
+            )))
+        }
+
+        if (recorder.recording && !recorder.captioning) || recorder.working {
             out.append(RowSpec(id: "recorder", view: AnyView(
                 PanelRow(id: "recorder",
                          title: recorder.working ? "Writing up the meeting"

@@ -29,6 +29,9 @@ struct NotchRootView: View {
         }
     }
 
+    @ObservedObject private var strip = ControlStrip.shared
+    @ObservedObject private var recorder = MeetingRecorder.shared
+
     private var shape: NotchShape {
         NotchShape(bottomRadius: radius,
                    topRadius: state.mode == .collapsed ? 7 : 9,
@@ -38,6 +41,68 @@ struct NotchRootView: View {
 
     private var usesChin: Bool {
         state.mode == .collapsed && state.isLive && state.usesChin
+    }
+
+    private var ambientSignal: (Color, Bool)? {
+        guard prefs.d.ambientGlow else { return nil }
+        if MeetingRecorder.shared.recording { return (t.red, true) }
+        if !GitHubService.shared.snapshot.failures.isEmpty { return (t.red, false) }
+        if let limits = state.usage.codexLimits {
+            if limits.primary.usedPercent >= 95 { return (t.red, false) }
+            if limits.primary.usedPercent >= 80 { return (t.orange, false) }
+        }
+        if state.presence.claudeCode && state.hasAttention { return (t.accent, true) }
+        return nil
+    }
+
+    @ViewBuilder private var ambientGlow: some View {
+        if let signal = ambientSignal {
+            if signal.1 {
+                TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { line in
+                    let phase = line.date.timeIntervalSinceReferenceDate
+                    let wave = 0.40 + 0.38 * (0.5 + 0.5 * sin(phase * 2.0))
+                    shape.stroke(signal.0.opacity(wave), lineWidth: 1.4)
+                }
+                .allowsHitTesting(false)
+            } else {
+                shape.stroke(signal.0.opacity(0.72), lineWidth: 1.4)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var stripReadout: some View {
+        Group {
+            if strip.showing, let target = strip.lastTarget {
+                VStack(spacing: 5) {
+                    Spacer(minLength: 0)
+                    HStack(spacing: 6) {
+                        Image(systemName: target.symbol)
+                            .font(.system(size: 10, weight: .semibold))
+                        Capsule()
+                            .fill(t.wellFill)
+                            .frame(width: 92, height: 3)
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(t.accent)
+                                    .frame(width: max(3, 92 * strip.value), height: 3)
+                            }
+                        Text("\(Int(strip.value * 100))")
+                            .font(.system(size: 9.5, weight: .semibold))
+                            .monospacedDigit()
+                            .frame(width: 22, alignment: .trailing)
+                    }
+                    .foregroundStyle(t.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(t.control))
+                    .padding(.bottom, 6)
+                }
+                .allowsHitTesting(false)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: strip.showing)
     }
 
     private var notch: some View {
@@ -57,6 +122,8 @@ struct NotchRootView: View {
         .clipShape(shape)
         .overlay(rim)
         .overlay(attentionGlow)
+        .overlay(ambientGlow)
+        .overlay(stripReadout)
         .overlay(dropHighlight)
         .overlay(alignment: .bottom) { edgeProgress }
         .overlay { timerRing }
@@ -65,6 +132,18 @@ struct NotchRootView: View {
                 radius: state.mode == .collapsed ? 10 : 30, y: state.mode == .collapsed ? 5 : 14)
         .shadow(color: .black.opacity(state.mode == .collapsed ? 0.10 : 0.18),
                 radius: state.mode == .collapsed ? 2 : 5, y: 1)
+        .gesture(
+            DragGesture(minimumDistance: 5)
+                .onChanged { value in
+                    guard prefs.d.stripEnabled else { return }
+                    if strip.active == nil {
+                        strip.begin(strip.target(for: NSEvent.modifierFlags))
+                    }
+                    strip.drag(Double(value.translation.width),
+                               width: Double(size.width) * 0.55)
+                }
+                .onEnded { _ in strip.end() }
+        )
         .animation(motion, value: state.mode)
         .animation(motion, value: state.isLive)
         .animation(motion, value: size)
