@@ -1096,6 +1096,30 @@ struct ExpandedPanel: View {
                           title: "No Claude Code sessions found",
                           detail: "Transcripts live in ~/.claude/projects")
             } else {
+                if let claude = state.usage.claudeLimit {
+                    HStack(spacing: 6) {
+                        SourceIcon(source: .claude, kind: .info, theme: t, side: 15)
+                        Text(claude.blocked
+                             ? "\(claude.label) limit reached, back in "
+                                + claude.remainingText
+                             : "\(claude.label) window, resets in \(claude.remainingText)")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(claude.blocked ? t.red : t.tertiary)
+                        Spacer()
+                    }
+                }
+                if let codex = state.usage.codexLimits {
+                    HStack(spacing: 6) {
+                        SourceIcon(source: .chatgpt, kind: .info, theme: t, side: 15)
+                        Text("\(Int(codex.primary.usedPercent))% of the "
+                             + "\(codex.primary.label) window, resets in "
+                             + codex.primary.remainingText)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(t.tertiary)
+                        Spacer()
+                    }
+                }
+
                 HStack {
                     Text("\(state.sessions.count) recent")
                         .font(.system(size: 12.5, weight: .medium))
@@ -2391,9 +2415,11 @@ struct ExpandedPanel: View {
         return PanelRow(id: "usage-claude",
                         title: "Claude Code",
                         subtitle: limit.blocked
-                            ? "\(limit.label) limit reached, resets in "
+                            ? "\(limit.label) limit reached, back in "
                                 + limit.remainingText
-                            : "\(limit.label) window, resets in \(limit.remainingText)",
+                            : "\(limit.label) window, resets in \(limit.remainingText)"
+                                + (limit.messages > 0
+                                   ? ", \(limit.messages) messages so far" : ""),
                         theme: t, onTap: nil,
                         leading: {
                             SourceIcon(source: .claude, kind: .info, theme: t, side: 28)
@@ -2407,16 +2433,25 @@ struct ExpandedPanel: View {
                                         .padding(.horizontal, 4.5)
                                         .padding(.vertical, 1.5)
                                         .background(Capsule().fill(t.red.opacity(0.16)))
-                                } else if let tally {
-                                    Text(UsageSnapshot.short(tally.tokens))
+                                } else {
+                                    Text(UsageSnapshot.short(limit.tokens > 0
+                                                             ? limit.tokens
+                                                             : (tally?.tokens ?? 0)))
                                         .font(.system(size: 12.5, weight: .semibold,
                                                       design: .rounded))
                                         .foregroundStyle(t.primary)
                                         .monospacedDigit()
-                                    Text("tokens")
-                                        .font(.system(size: 8.5, weight: .medium))
-                                        .foregroundStyle(t.tertiary)
                                 }
+                                Capsule()
+                                    .fill(t.wellFill)
+                                    .frame(width: 54, height: 2.5)
+                                    .overlay(alignment: .leading) {
+                                        Capsule()
+                                            .fill(limit.blocked ? t.red
+                                                  : NotchSource.claude.tint(t))
+                                            .frame(width: max(2, 54 * limit.elapsedFraction),
+                                                   height: 2.5)
+                                    }
                             }
                         })
     }

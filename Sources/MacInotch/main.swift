@@ -133,6 +133,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             },
             onThreshold: { window, mark, projection in
                 Task { @MainActor in Self.announceThreshold(window, mark, projection) }
+            },
+            onClaudeLimit: { limit, blocked in
+                Task { @MainActor in Self.announceClaudeLimit(limit, blocked) }
             })
         usage.start()
 
@@ -457,6 +460,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         p.timeout = mark >= 95 ? 14 : 10
         p.sound = true
+        NotchState.shared.handle(p)
+    }
+
+    static func announceClaudeLimit(_ limit: ClaudeLimit, _ blocked: Bool) {
+        guard Prefs.shared.d.notifyOnUsageReset
+                || Prefs.shared.d.notifyOnUsageThreshold else { return }
+
+        var p = NotchPayload()
+        p.source = NotchSource.claude.rawValue
+        p.key = "claude-limit"
+        p.timeout = blocked ? 16 : 10
+        p.sound = true
+
+        if blocked {
+            guard Prefs.shared.d.notifyOnUsageThreshold else { return }
+            p.kind = "warning"
+            p.title = "Claude Code \(limit.label) limit reached"
+            p.body = "Back in \(limit.remainingText)"
+        } else {
+            guard Prefs.shared.d.notifyOnUsageReset else { return }
+            p.kind = "success"
+            p.title = "Claude Code is available again"
+            p.body = "The \(limit.label) window has reset"
+        }
         NotchState.shared.handle(p)
     }
 

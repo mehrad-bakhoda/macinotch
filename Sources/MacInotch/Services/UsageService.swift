@@ -61,6 +61,26 @@ struct ClaudeLimit: Equatable {
     var kind: String
     var resetsAt: Date
     var blocked: Bool
+    var tokens: Int = 0
+    var messages: Int = 0
+
+    var windowMinutes: Int {
+        switch kind {
+        case "five_hour": return 300
+        case "seven_day", "weekly", "opus_weekly": return 10080
+        default: return 300
+        }
+    }
+
+    var startedAt: Date {
+        resetsAt.addingTimeInterval(-Double(windowMinutes) * 60)
+    }
+
+    var elapsedFraction: Double {
+        let span = Double(windowMinutes) * 60
+        guard span > 0 else { return 0 }
+        return min(1, max(0, Date().timeIntervalSince(startedAt) / span))
+    }
 
     var label: String {
         switch kind {
@@ -105,21 +125,27 @@ final class UsageService: @unchecked Sendable {
     private let onUpdate: @Sendable (UsageSnapshot) -> Void
     private let onReset: @Sendable (NotchSource, RateWindow) -> Void
     private let onThreshold: @Sendable (RateWindow, Int, RateProjection?) -> Void
+    private let onClaudeLimit: @Sendable (ClaudeLimit, Bool) -> Void
 
     private let lock = NSLock()
     private var windowHours: Double
     private var lastCodexReset: Date?
     private var lastCodexUse: Double?
+    private var lastClaudeBlocked: Date?
+    private var lastClaudeReset: Date?
+    private var lastClaudeAnnouncedReset: Date?
     private var announced: [Date: Set<Int>] = [:]
 
     init(windowHours: Double,
          onUpdate: @escaping @Sendable (UsageSnapshot) -> Void,
          onReset: @escaping @Sendable (NotchSource, RateWindow) -> Void,
-         onThreshold: @escaping @Sendable (RateWindow, Int, RateProjection?) -> Void) {
+         onThreshold: @escaping @Sendable (RateWindow, Int, RateProjection?) -> Void,
+         onClaudeLimit: @escaping @Sendable (ClaudeLimit, Bool) -> Void = { _, _ in }) {
         self.windowHours = windowHours
         self.onUpdate = onUpdate
         self.onReset = onReset
         self.onThreshold = onThreshold
+        self.onClaudeLimit = onClaudeLimit
     }
 
     func update(windowHours value: Double) {
@@ -176,6 +202,20 @@ final class UsageService: @unchecked Sendable {
             announced[window.resetsAt] = seen
             announced = announced.filter { $0.key > Date().addingTimeInterval(-86_400) }
         }
+        if let limit = snap.claudeLimit {
+            if limit.blocked, lastClaudeBlocked != limit.resetsAt {
+                lastClaudeBlocked = limit.resetsAt
+                onClaudeLimit(limit, true)
+            }
+            lastClaudeReset = limit.resetsAt
+        } else if let previous = lastClaudeReset, previous <= Date(),
+                  lastClaudeAnnouncedReset != previous {
+            lastClaudeAnnouncedReset = previous
+            lastClaudeReset = nil
+            onClaudeLimit(ClaudeLimit(kind: "five_hour", resetsAt: previous,
+                                      blocked: false), false)
+        }
+
         onUpdate(snap)
     }
 
@@ -394,9 +434,14 @@ final class UsageService: @unchecked Sendable {
         let at = Date(timeIntervalSince1970: resets)
         guard at > Date() else { return nil }
 
-        return ClaudeLimit(kind: quota["rateLimitType"] as? String ?? "limit",
-                           resetsAt: at,
-                           blocked: (quota["status"] as? String) == "rejected")
+        var limit = ClaudeLimit(kind: quota["rateLimitType"] as? String ?? "limit",
+                                resetsAt: at,
+                                blocked: (quota["status"] as? String) == "rejected")
+        if let tally = claudeTally(window: Date().timeIntervalSince(limit.startedAt)) {
+            limit.tokens = tally.tokens
+            limit.messages = tally.messages
+        }
+        return limit
     }
 
     private static func findQuota(_ value: Any) -> [String: Any]? {
