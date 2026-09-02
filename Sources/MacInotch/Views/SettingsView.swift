@@ -541,6 +541,14 @@ struct SettingsView: View {
                     }
             }
 
+            Section("Panel") {
+                Stepper("Scroll the list past \(prefs.d.rowsBeforeScrolling) rows",
+                        value: $prefs.d.rowsBeforeScrolling, in: 3...20)
+                Text("Rows below that point scroll instead of growing the panel "
+                     + "past the bottom of the screen.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Alerts") {
                 Toggle("Disk filling up", isOn: $prefs.d.alertDisk)
                 Toggle("A process pinning the CPU", isOn: $prefs.d.alertRunaway)

@@ -2244,8 +2244,23 @@ struct ExpandedPanel: View {
     }
 
     private var rowStack: some View {
-        VStack(spacing: 2) {
-            ForEach(rows) { $0.view }
+        let limit = CGFloat(p.rowsBeforeScrolling)
+        let scrolls = CGFloat(rows.count) > limit
+
+        return Group {
+            if scrolls {
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(spacing: 2) {
+                        ForEach(rows) { $0.view }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .frame(maxHeight: limit * 46)
+            } else {
+                VStack(spacing: 2) {
+                    ForEach(rows) { $0.view }
+                }
+            }
         }
         .padding(.horizontal, -10)
     }
@@ -2390,24 +2405,48 @@ struct ExpandedPanel: View {
     }
 
     private func tallyRow(_ provider: NotchSource, _ tally: LocalTally) -> some View {
-        PanelRow(id: "usage-\(provider.rawValue)",
-                 title: provider == .claude ? "Claude Code" : "Codex",
-                 subtitle: "\(tally.messages) messages in the last \(tally.sinceText)",
-                 theme: t, onTap: nil,
-                 leading: {
-                     SourceIcon(source: provider, kind: .info, theme: t, side: 28)
-                 },
-                 trailing: {
-                     VStack(alignment: .trailing, spacing: 2) {
-                         Text(UsageSnapshot.short(tally.tokens))
-                             .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                             .foregroundStyle(t.primary)
-                             .monospacedDigit()
-                         Text("tokens")
-                             .font(.system(size: 8.5, weight: .medium))
-                             .foregroundStyle(t.tertiary)
-                     }
-                 })
+        let peak = provider == .claude ? max(1, p.claudePeakTokens) : 0
+        let share = provider == .claude
+            ? min(1.2, Double(tally.tokens) / Double(peak)) : 0
+        let hours = Int(p.usageWindowHours)
+
+        return PanelRow(
+            id: "usage-\(provider.rawValue)",
+            title: provider == .claude ? "Claude Code" : "Codex",
+            subtitle: provider == .claude
+                ? "\(tally.messages) messages this \(hours)h window, "
+                    + (share >= 0.98
+                       ? "your heaviest yet"
+                       : "\(Int(share * 100))% of your heaviest")
+                : "\(tally.messages) messages in the last \(tally.sinceText)",
+            theme: t, onTap: nil,
+            leading: {
+                SourceIcon(source: provider, kind: .info, theme: t, side: 28)
+            },
+            trailing: {
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(UsageSnapshot.short(tally.tokens))
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(t.primary)
+                        .monospacedDigit()
+                    if provider == .claude {
+                        Capsule()
+                            .fill(t.wellFill)
+                            .frame(width: 54, height: 2.5)
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(share >= 0.9 ? t.orange
+                                          : NotchSource.claude.tint(t))
+                                    .frame(width: max(2, 54 * min(1, share)),
+                                           height: 2.5)
+                            }
+                    } else {
+                        Text("tokens")
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundStyle(t.tertiary)
+                    }
+                }
+            })
     }
 
     private func claudeLimitRow(_ limit: ClaudeLimit) -> some View {

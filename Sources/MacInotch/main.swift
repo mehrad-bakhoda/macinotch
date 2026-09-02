@@ -119,6 +119,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             onUpdate: { snap in
                 Task { @MainActor in
                     if snap != NotchState.shared.usage { NotchState.shared.usage = snap }
+                    if let tally = snap.claude {
+                        if tally.tokens > Prefs.shared.d.claudePeakTokens {
+                            Prefs.shared.d.claudePeakTokens = tally.tokens
+                        }
+                        if tally.messages > Prefs.shared.d.claudePeakMessages {
+                            Prefs.shared.d.claudePeakMessages = tally.messages
+                        }
+                    }
                     if let limits = snap.codexLimits {
                         AccountService.shared.recordUsage(
                             .codex,

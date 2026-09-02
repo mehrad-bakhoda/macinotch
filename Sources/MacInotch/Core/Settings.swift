@@ -92,6 +92,9 @@ struct PrefsData: Codable, Equatable {
     var showQuickBar         = true
     var githubClientId       = ""
     var accountUsageSchema   = 0
+    var claudePeakTokens     = 0
+    var claudePeakMessages   = 0
+    var rowsBeforeScrolling  = 7
     var calendarsExcluded: [String] = []
     var caffeineMinutes      = 60.0
     var caffeineKeepsDisplayOn = true
