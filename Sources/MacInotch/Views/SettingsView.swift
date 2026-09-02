@@ -30,6 +30,7 @@ struct SettingsView: View {
     @ObservedObject private var github = GitHubService.shared
     @ObservedObject private var dictation = Dictation.shared
     @ObservedObject private var switcher = AccountService.shared
+    @ObservedObject private var can = Capabilities.shared
 
     enum Tab: String, CaseIterable, Identifiable {
         case general = "General"
@@ -66,7 +67,7 @@ struct SettingsView: View {
 
     private var tabBar: some View {
         HStack(spacing: 2) {
-            ForEach(Tab.allCases) { tab in
+            ForEach(visibleTabs) { tab in
                 Button {
                     nav.tab = tab
                 } label: {
@@ -139,8 +140,9 @@ struct SettingsView: View {
         let query = nav.settingsSearch
             .lowercased().trimmingCharacters(in: .whitespaces)
         let hits = SettingsIndex.entries.filter { entry in
-            entry.title.lowercased().contains(query)
-                || entry.keywords.contains { $0.contains(query) }
+            SettingsIndex.available(entry)
+                && (entry.title.lowercased().contains(query)
+                    || entry.keywords.contains { $0.contains(query) })
         }
 
         return Form {
@@ -173,6 +175,10 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var visibleTabs: [Tab] {
+        Tab.allCases.filter { $0 != .fans || can.fans }
     }
 
     private var searchField: some View {
@@ -310,12 +316,20 @@ struct SettingsView: View {
                 Toggle("CPU", isOn: $prefs.d.showCPU)
                 Toggle("Memory", isOn: $prefs.d.showRAM)
                 Toggle("Swap", isOn: $prefs.d.showSwap)
-                Toggle("Battery", isOn: $prefs.d.showBattery)
-                Toggle("Temperature", isOn: $prefs.d.showTemperature)
-                Toggle("Use Fahrenheit", isOn: $prefs.d.fahrenheit)
-                    .disabled(!prefs.d.showTemperature)
-                Toggle("Fan speeds", isOn: $prefs.d.showFans)
-                Toggle("Power draw", isOn: $prefs.d.showPower)
+                if can.battery {
+                    Toggle("Battery", isOn: $prefs.d.showBattery)
+                }
+                if can.temperature {
+                    Toggle("Temperature", isOn: $prefs.d.showTemperature)
+                    Toggle("Use Fahrenheit", isOn: $prefs.d.fahrenheit)
+                        .disabled(!prefs.d.showTemperature)
+                }
+                if can.fans {
+                    Toggle("Fan speeds", isOn: $prefs.d.showFans)
+                }
+                if can.power {
+                    Toggle("Power draw", isOn: $prefs.d.showPower)
+                }
                 Toggle("Bluetooth device battery", isOn: $prefs.d.showBluetooth)
                 Toggle("Audio output switcher", isOn: $prefs.d.showAudioSwitcher)
                 Toggle("Notes", isOn: $prefs.d.showNotes)
@@ -383,6 +397,29 @@ struct SettingsView: View {
                      + "long, draining as the time runs down. Right click it to pick a "
                      + "different length for one go. With the display off the machine "
                      + "stays running while the screen is free to sleep.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("This Mac") {
+                LabeledContent("Notch") {
+                    Text(can.notch ? "Yes" : "No, a bar is drawn instead")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Fans") {
+                    Text(can.fans ? "Present" : "None on this model")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Temperature sensors") {
+                    Text(can.temperature ? "Readable" : "Not readable here")
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Apple Intelligence") {
+                    Text(can.intelligence ? "Available"
+                         : "Unavailable, summaries fall back to the opening lines")
+                        .foregroundStyle(.secondary)
+                }
+                Text("Anything this Mac cannot do is hidden rather than shown as a "
+                     + "switch that changes nothing. A fanless Air has no Fans tab.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -505,8 +542,12 @@ struct SettingsView: View {
             Section("Alerts") {
                 Toggle("Disk filling up", isOn: $prefs.d.alertDisk)
                 Toggle("A process pinning the CPU", isOn: $prefs.d.alertRunaway)
-                Toggle("Thermal throttling", isOn: $prefs.d.alertThermal)
-                Toggle("Battery health and low battery", isOn: $prefs.d.alertBattery)
+                if can.temperature {
+                    Toggle("Thermal throttling", isOn: $prefs.d.alertThermal)
+                }
+                if can.battery {
+                    Toggle("Battery health and low battery", isOn: $prefs.d.alertBattery)
+                }
                 Toggle("Network, VPN and hotspot changes", isOn: $prefs.d.alertNetwork)
                 Text("Each warning fires once and rearms only after the condition "
                      + "clears, so a full disk does not chime every minute.")
@@ -1406,7 +1447,13 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func stripPicker(isLeft: Bool) -> some View {
-        ForEach(PrefsData.StripItem.allCases) { item in
+        ForEach(PrefsData.StripItem.allCases.filter { item in
+            switch item {
+            case .temp: return can.temperature
+            case .battery: return can.battery
+            default: return true
+            }
+        }) { item in
             Toggle(item.label, isOn: Binding(
                 get: {
                     (isLeft ? prefs.d.idleLeft : prefs.d.idleRight).contains(item.rawValue)
@@ -1720,11 +1767,32 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 }
 
 enum SettingsIndex {
+    enum Need { case fans, temperature, intelligence }
+
     struct Entry: Identifiable {
         var id: String { title }
         var title: String
         var tab: SettingsView.Tab
+        var needs: Need?
         var keywords: [String]
+
+        init(title: String, tab: SettingsView.Tab, needs: Need? = nil,
+             keywords: [String]) {
+            self.title = title
+            self.tab = tab
+            self.needs = needs
+            self.keywords = keywords
+        }
+    }
+
+    @MainActor
+    static func available(_ entry: Entry) -> Bool {
+        switch entry.needs {
+        case .fans: return Capabilities.shared.fans
+        case .temperature: return Capabilities.shared.temperature
+        case .intelligence: return Capabilities.shared.intelligence
+        case nil: return true
+        }
     }
 
     static let entries: [Entry] = [
@@ -1735,13 +1803,13 @@ enum SettingsIndex {
         Entry(title: "Hotkey", tab: .general, keywords: ["hotkey", "shortcut", "key"]),
         Entry(title: "Start at login", tab: .general,
               keywords: ["login", "startup", "launch"]),
-        Entry(title: "Dictation", tab: .integrations,
+        Entry(title: "Dictation", tab: .integrations, needs: .intelligence,
               keywords: ["dictate", "dictation", "voice", "speak", "microphone",
                          "note", "transcribe", "hold"]),
         Entry(title: "Sound cues", tab: .general,
               keywords: ["sound", "cue", "audio", "chime", "tone", "silent",
                          "mail sound", "alert sound"]),
-        Entry(title: "Meeting notes", tab: .integrations,
+        Entry(title: "Meeting notes", tab: .integrations, needs: .intelligence,
               keywords: ["meeting", "record", "transcript", "summary", "captions"]),
         Entry(title: "Notch as a control", tab: .notch,
               keywords: ["drag", "volume", "brightness", "scrub", "strip", "control"]),
@@ -1775,7 +1843,7 @@ enum SettingsIndex {
         Entry(title: "Alerts and warnings", tab: .alerts,
               keywords: ["alert", "disk", "thermal", "runaway", "network", "vpn",
                          "battery", "warning"]),
-        Entry(title: "Fans", tab: .fans,
+        Entry(title: "Fans", tab: .fans, needs: .fans,
               keywords: ["fan", "rpm", "boost", "cooling", "blast", "speed"]),
         Entry(title: "Notification history", tab: .history,
               keywords: ["history", "notification", "search", "past"]),

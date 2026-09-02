@@ -67,7 +67,9 @@ final class NotchState: ObservableObject {
     @Published var pinned: Bool = false
 
     @Published var music = MusicSnapshot()
-    @Published var battery = BatterySnapshot()
+    @Published var battery = BatterySnapshot() {
+        didSet { Capabilities.shared.observe(self) }
+    }
     @Published var stats = SystemStats() {
         didSet { recordSamples() }
     }
@@ -88,8 +90,12 @@ final class NotchState: ObservableObject {
         push(&tempHistory, temps.socLoad)
     }
     @Published var presence = Presence()
-    @Published var temps = Temperatures()
-    @Published var fans = FanSnapshot()
+    @Published var temps = Temperatures() {
+        didSet { Capabilities.shared.observe(self) }
+    }
+    @Published var fans = FanSnapshot() {
+        didSet { Capabilities.shared.observe(self) }
+    }
     @Published var usage = UsageSnapshot()
     @Published var topCPU: ProcessUsage?
     @Published var topMemory: ProcessUsage?

@@ -203,7 +203,10 @@ export default function Home() {
           session transcripts keep their place and parse only what has arrived
           since, so files that have not changed cost nothing to look at again.
           Macs without a notch, an Air or anything on an external display, get a
-          rounded bar in the same place.
+          rounded bar in the same place. Anything a given Mac cannot do is hidden
+          rather than shown as a control that changes nothing: a fanless Air has
+          no Fans tab, and a machine without readable temperature sensors is not
+          offered a temperature tile.
         </p>
       </Section>
 

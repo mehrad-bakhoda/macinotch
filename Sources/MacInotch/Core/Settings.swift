@@ -104,6 +104,10 @@ struct PrefsData: Codable, Equatable {
     var virtualNotchWidth    = 190.0
     var virtualNotchHeight   = 32.0
     var pretendNoNotch       = false
+    var seenFans             = false
+    var seenTemperature      = false
+    var seenPower            = false
+    var seenBattery          = false
     var cueMail              = "mail"
     var cueBuildFailure      = "failure"
     var cueLimitWarning      = "attention"

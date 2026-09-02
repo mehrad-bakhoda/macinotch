@@ -81,10 +81,12 @@ struct ExpandedPanel: View {
     }
 
     private var showsVitals: Bool {
-        p.showCPU || p.showRAM || p.showBattery || showsTemp || showsFans || p.showPower
+        p.showCPU || p.showRAM || (p.showBattery && state.battery.present)
+            || showsTemp || showsFans || showsPower
     }
     private var showsTemp: Bool { p.showTemperature && state.temps.available }
     private var showsFans: Bool { p.showFans && !state.fans.fans.isEmpty }
+    private var showsPower: Bool { p.showPower && state.fans.systemWatts > 0 }
     private struct QuickButton: View {
         var symbol: String
         var label: String

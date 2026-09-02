@@ -288,6 +288,22 @@ Settings → Connect can export your current settings into that file.
 
 ---
 
+## What your Mac can do
+
+Not every Mac can do everything here, and the ones that cannot are not shown a
+switch that changes nothing.
+
+| | |
+|---|---|
+| A fanless Air | no Fans tab, no fan readings, no fan alerts |
+| No readable temperature sensors | no temperature tile, no thermal warning |
+| No notch | a rounded bar in the same position |
+| No Apple Intelligence | summaries fall back to the opening lines, dictation and meeting notes are hidden |
+
+Settings has a panel naming what this Mac was found to have. Detection happens
+by reading rather than by model name, so an unusual configuration is judged on
+what it actually reports.
+
 ## Permissions
 
 Everything is optional. MacInotch works without any of it, and the first-run
