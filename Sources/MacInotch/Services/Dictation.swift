@@ -14,6 +14,8 @@ final class Dictation: ObservableObject {
     @Published private(set) var levels: [Double] = Array(repeating: 0, count: 28)
     @Published private(set) var status = ""
     @Published var lastError = ""
+    @Published private(set) var registered = false
+    @Published private(set) var registerStatus: OSStatus = 0
 
     private var engine: AVAudioEngine?
     private var analyzer: Any?
@@ -52,7 +54,9 @@ final class Dictation: ObservableObject {
             GetEventParameter(event, EventParamName(kEventParamDirectObject),
                               EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &id)
-            guard id.signature == Dictation.signature else { return noErr }
+            guard id.signature == Dictation.signature else {
+                return OSStatus(eventNotHandledErr)
+            }
 
             let kind = GetEventKind(event)
             Task { @MainActor in
@@ -66,8 +70,9 @@ final class Dictation: ObservableObject {
         }, 2, &specs, nil, &handler)
 
         let id = EventHotKeyID(signature: Self.signature, id: 2)
-        RegisterEventHotKey(choice.keyCode, choice.modifiers, id,
-                            GetApplicationEventTarget(), 0, &hotKey)
+        registerStatus = RegisterEventHotKey(choice.keyCode, choice.modifiers, id,
+                                             GetApplicationEventTarget(), 0, &hotKey)
+        registered = registerStatus == noErr && hotKey != nil
     }
 
     private static let signature: OSType = 0x4D4E4443

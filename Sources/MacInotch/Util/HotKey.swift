@@ -25,7 +25,9 @@ final class HotKey {
             GetEventParameter(event, EventParamName(kEventParamDirectObject),
                               EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &id)
-            guard id.signature == HotKey.signature else { return noErr }
+            guard id.signature == HotKey.signature else {
+                return OSStatus(eventNotHandledErr)
+            }
             Task { @MainActor in HotKey.shared.fire() }
             return noErr
         }, 1, &eventType, nil, &handler)

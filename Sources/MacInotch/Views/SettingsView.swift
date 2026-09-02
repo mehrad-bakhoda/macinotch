@@ -13,6 +13,7 @@ final class SettingsNav: ObservableObject {
     @Published var shortcutNames: [String] = []
     @Published var githubToken: String = ""
     @Published var connectingGitHub = false
+    @Published var settingsSearch: String = ""
 }
 
 struct SettingsView: View {
@@ -93,9 +94,80 @@ struct SettingsView: View {
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity)
         .background(.bar)
+        .overlay(alignment: .trailing) {
+            HStack(spacing: 5) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                TextField("Search settings", text: $nav.settingsSearch)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .frame(width: 128)
+                if !nav.settingsSearch.isEmpty {
+                    Button {
+                        nav.settingsSearch = ""
+                    } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 7).fill(.quaternary))
+            .padding(.trailing, 10)
+        }
     }
 
     @ViewBuilder private var content: some View {
+        if !nav.settingsSearch.isEmpty {
+            searchResults
+        } else {
+            tabContent
+        }
+    }
+
+    private var searchResults: some View {
+        let query = nav.settingsSearch
+            .lowercased().trimmingCharacters(in: .whitespaces)
+        let hits = SettingsIndex.entries.filter { entry in
+            entry.title.lowercased().contains(query)
+                || entry.keywords.contains { $0.contains(query) }
+        }
+
+        return Form {
+            if hits.isEmpty {
+                Text("Nothing matches \"\(nav.settingsSearch)\".")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(hits) { entry in
+                Button {
+                    nav.tab = entry.tab
+                    nav.settingsSearch = ""
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: entry.tab.symbol)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 18)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(entry.title)
+                            Text(entry.tab.rawValue)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    @ViewBuilder private var tabContent: some View {
         switch nav.tab {
         case .general:      general
         case .widgets:      widgets
@@ -1538,4 +1610,78 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
+}
+
+enum SettingsIndex {
+    struct Entry: Identifiable {
+        var id: String { title }
+        var title: String
+        var tab: SettingsView.Tab
+        var keywords: [String]
+    }
+
+    static let entries: [Entry] = [
+        Entry(title: "Theme, light and dark", tab: .general,
+              keywords: ["appearance", "dark", "light", "colour", "color", "glass"]),
+        Entry(title: "Opening animation", tab: .general,
+              keywords: ["animation", "spring", "motion", "open"]),
+        Entry(title: "Hotkey", tab: .general, keywords: ["hotkey", "shortcut", "key"]),
+        Entry(title: "Start at login", tab: .general,
+              keywords: ["login", "startup", "launch"]),
+        Entry(title: "Dictation", tab: .general,
+              keywords: ["dictate", "dictation", "voice", "speak", "microphone",
+                         "note", "transcribe", "hold"]),
+        Entry(title: "Sound cues", tab: .general,
+              keywords: ["sound", "cue", "audio", "chime", "tone", "silent",
+                         "mail sound", "alert sound"]),
+        Entry(title: "Meeting notes", tab: .general,
+              keywords: ["meeting", "record", "transcript", "summary", "captions"]),
+        Entry(title: "Notch as a control", tab: .notch,
+              keywords: ["drag", "volume", "brightness", "scrub", "strip", "control"]),
+        Entry(title: "Status outline", tab: .notch,
+              keywords: ["glow", "outline", "ambient", "ring", "colour", "border"]),
+        Entry(title: "Collapsed readout", tab: .widgets,
+              keywords: ["collapsed", "idle", "left", "right", "readout", "slot"]),
+        Entry(title: "System vitals", tab: .widgets,
+              keywords: ["cpu", "memory", "ram", "temperature", "disk", "battery"]),
+        Entry(title: "AI usage and limits", tab: .widgets,
+              keywords: ["usage", "limit", "token", "codex", "claude", "quota",
+                         "window", "reset"]),
+        Entry(title: "Sessions", tab: .widgets,
+              keywords: ["session", "project", "live", "active", "transcript"]),
+        Entry(title: "Accounts", tab: .widgets,
+              keywords: ["account", "switch", "sign in", "keychain", "codex",
+                         "claude", "login"]),
+        Entry(title: "GitHub", tab: .widgets,
+              keywords: ["github", "token", "workflow", "pull request", "ci",
+                         "contributions", "push"]),
+        Entry(title: "Mail", tab: .widgets,
+              keywords: ["mail", "email", "inbox", "unread", "reply", "triage",
+                         "summary"]),
+        Entry(title: "Meetings and reminders", tab: .widgets,
+              keywords: ["calendar", "meeting", "reminder", "event", "join",
+                         "google", "mute"]),
+        Entry(title: "Keep awake", tab: .widgets,
+              keywords: ["awake", "sleep", "caffeine", "coffee", "display"]),
+        Entry(title: "Panel rows and scrolling", tab: .widgets,
+              keywords: ["scroll", "rows", "panel", "height"]),
+        Entry(title: "Alerts and warnings", tab: .alerts,
+              keywords: ["alert", "disk", "thermal", "runaway", "network", "vpn",
+                         "battery", "warning"]),
+        Entry(title: "Fans", tab: .fans,
+              keywords: ["fan", "rpm", "boost", "cooling", "blast", "speed"]),
+        Entry(title: "Notification history", tab: .history,
+              keywords: ["history", "notification", "search", "past"]),
+        Entry(title: "Connect and permissions", tab: .integrations,
+              keywords: ["permission", "connect", "full disk", "calendar access",
+                         "hooks", "config", "mirror"]),
+        Entry(title: "Menu bar hiding", tab: .notch,
+              keywords: ["menu bar", "hide", "icons"]),
+        Entry(title: "Notes folder", tab: .widgets,
+              keywords: ["notes", "markdown", "folder", "sticky"]),
+        Entry(title: "Timers and pomodoro", tab: .widgets,
+              keywords: ["timer", "pomodoro", "ring", "countdown"]),
+        Entry(title: "Weather", tab: .widgets,
+              keywords: ["weather", "temperature", "location", "forecast"]),
+    ]
 }

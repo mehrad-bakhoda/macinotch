@@ -376,6 +376,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     ? "granted" : "not granted",
             ],
             "panelWindow": NotchWindowController.currentWindowNumber,
+            "dictation": ["available": Dictation.available,
+                          "enabled": Prefs.shared.d.dictationEnabled,
+                          "hotKey": Prefs.shared.d.dictationHotKey,
+                          "registered": Dictation.shared.registered,
+                          "status": Int(Dictation.shared.registerStatus),
+                          "listening": Dictation.shared.listening,
+                          "error": Dictation.shared.lastError],
             "caffeine": ["active": CaffeineService.shared.active,
                          "detail": CaffeineService.shared.detail],
             "network": {
