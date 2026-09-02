@@ -1896,9 +1896,14 @@ struct ExpandedPanel: View {
         }
 
         if p.showUsage {
-            if p.usageShowClaude, let tally = state.usage.claude {
-                out.append(RowSpec(id: "usage-claude",
-                                   view: AnyView(tallyRow(.claude, tally))))
+            if p.usageShowClaude {
+                if let limit = state.usage.claudeLimit {
+                    out.append(RowSpec(id: "usage-claude",
+                                       view: AnyView(claudeLimitRow(limit))))
+                } else if let tally = state.usage.claude {
+                    out.append(RowSpec(id: "usage-claude",
+                                       view: AnyView(tallyRow(.claude, tally))))
+                }
             }
             if p.usageShowCodex {
                 if let limits = state.usage.codexLimits {
@@ -2379,6 +2384,41 @@ struct ExpandedPanel: View {
                              .foregroundStyle(t.tertiary)
                      }
                  })
+    }
+
+    private func claudeLimitRow(_ limit: ClaudeLimit) -> some View {
+        let tally = state.usage.claude
+        return PanelRow(id: "usage-claude",
+                        title: "Claude Code",
+                        subtitle: limit.blocked
+                            ? "\(limit.label) limit reached, resets in "
+                                + limit.remainingText
+                            : "\(limit.label) window, resets in \(limit.remainingText)",
+                        theme: t, onTap: nil,
+                        leading: {
+                            SourceIcon(source: .claude, kind: .info, theme: t, side: 28)
+                        },
+                        trailing: {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                if limit.blocked {
+                                    Text("LIMIT")
+                                        .font(.system(size: 8.5, weight: .bold))
+                                        .foregroundStyle(t.red)
+                                        .padding(.horizontal, 4.5)
+                                        .padding(.vertical, 1.5)
+                                        .background(Capsule().fill(t.red.opacity(0.16)))
+                                } else if let tally {
+                                    Text(UsageSnapshot.short(tally.tokens))
+                                        .font(.system(size: 12.5, weight: .semibold,
+                                                      design: .rounded))
+                                        .foregroundStyle(t.primary)
+                                        .monospacedDigit()
+                                    Text("tokens")
+                                        .font(.system(size: 8.5, weight: .medium))
+                                        .foregroundStyle(t.tertiary)
+                                }
+                            }
+                        })
     }
 
     private func limitRow(_ limits: CodexLimits) -> some View {

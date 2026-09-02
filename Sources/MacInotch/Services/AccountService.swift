@@ -89,7 +89,9 @@ struct SavedAccount: Identifiable, Codable, Equatable {
 
     var usageText: String? {
         guard let percent = effectivePercent, let knownAt else { return nil }
-        if percent == 0 { return "0% used, window has reset" }
+        if percent == 0 {
+            return knownResetsAt == nil ? "window has reset" : "0% used"
+        }
 
         let age = Int(Date().timeIntervalSince(knownAt))
         let ago = age < 3600 ? "\(max(1, age / 60))m ago" : "\(age / 3600)h ago"

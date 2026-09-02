@@ -327,6 +327,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 "codex": s.usage.codexTally.map { ["tokens": $0.tokens, "messages": $0.messages,
                                                    "since": $0.sinceText,
                                                    "source": "local tally"] } as Any,
+                "claudeLimit": s.usage.claudeLimit.map {
+                    ["kind": $0.kind, "resetsIn": $0.remainingText,
+                     "blocked": $0.blocked, "source": "reported by claude code"] } as Any,
                 "codexLimits": s.usage.codexLimits.map {
                     ["plan": $0.plan,
                      "usedPercent": $0.primary.usedPercent,

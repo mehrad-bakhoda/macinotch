@@ -1,24 +1,29 @@
-The outline is off unless you ask for it, and looks like something now.
+The Codex figure was showing the wrong limit, and saying so too often.
 
-### Ambient outline
+### It was reading someone else's number
 
-It was a flat stroke of one colour, on by default. Both were wrong.
+Codex writes several kinds of rate limit, each tagged with a limit id. Your plan
+limit is one of them; others cover separate pools entirely. The code took
+whichever record was written most recently and believed it, so a reserve pool
+sitting at zero on a seven day window replaced the plan limit that was actually
+constraining you. What it showed was real data about the wrong thing.
 
-It is off until you turn it on, because a permanent ring around the notch is a
-change to a machine you look at all day and not something to inherit from an
-update. Once on it offers three styles: a soft glow that blooms outward, a
-crisp hairline, and a sweep that carries the colour unevenly around the
-outline. Thickness, brightness and pulse speed are yours.
+The plan limit is now picked out by name, and the five hour and weekly windows
+come from that record alone.
 
-Each of the four things it reacts to can be switched off on its own and given
-its own colour: a failed workflow, a limit getting close, something waiting on
-you, and recording. Only one shows at a time, in that order.
+### It announced a reset every few minutes
 
-### The cup
+That reserve window rolls forward continuously, a minute or two at a time, and
+a reset was declared whenever the reset time moved at all. Moving forward is
+what a rolling window does. A reset is now only called when the window rolls
+over by at least half its length and usage actually falls, which is what a
+reset looks like from outside.
 
-It sat low in its circle, out of line with the icons beside it, and the gap
-above it only made sense while it was steaming. It now sits where the others
-do, and takes the room for steam only when there is steam.
+### Claude Code limits
+
+Claude Code has started recording its own limits, so its row can show when a
+five hour or weekly window is spent and when it comes back, rather than only a
+token tally. The tally remains until there is a limit to show.
 
 ### Install
 

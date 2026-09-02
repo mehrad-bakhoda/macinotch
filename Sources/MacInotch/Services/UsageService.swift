@@ -57,12 +57,37 @@ struct LocalTally: Equatable {
     }
 }
 
+struct ClaudeLimit: Equatable {
+    var kind: String
+    var resetsAt: Date
+    var blocked: Bool
+
+    var label: String {
+        switch kind {
+        case "five_hour": return "5h"
+        case "seven_day", "weekly": return "7d"
+        case "opus_weekly": return "7d Opus"
+        default: return kind.replacingOccurrences(of: "_", with: " ")
+        }
+    }
+
+    var remainingText: String {
+        let s = Int(max(0, resetsAt.timeIntervalSinceNow))
+        let h = s / 3600, m = (s % 3600) / 60
+        if h >= 24 { return "\(h / 24)d \(h % 24)h" }
+        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
+    }
+}
+
 struct UsageSnapshot: Equatable {
     var claude: LocalTally?
     var codexTally: LocalTally?
     var codexLimits: CodexLimits?
+    var claudeLimit: ClaudeLimit?
 
-    var available: Bool { claude != nil || codexTally != nil || codexLimits != nil }
+    var available: Bool {
+        claude != nil || codexTally != nil || codexLimits != nil || claudeLimit != nil
+    }
 
     static func short(_ n: Int) -> String {
         switch n {
@@ -84,6 +109,7 @@ final class UsageService: @unchecked Sendable {
     private let lock = NSLock()
     private var windowHours: Double
     private var lastCodexReset: Date?
+    private var lastCodexUse: Double?
     private var announced: [Date: Set<Int>] = [:]
 
     init(windowHours: Double,
@@ -121,14 +147,24 @@ final class UsageService: @unchecked Sendable {
         snap.claude = Self.claudeTally(window: window)
         snap.codexTally = Self.codexTally(window: window)
         snap.codexLimits = Self.codexLimits()
+        snap.claudeLimit = Self.claudeLimit()
 
         if let limits = snap.codexLimits {
             let window = limits.primary
             let previous = lastCodexReset
+            let previousUse = lastCodexUse
             lastCodexReset = window.resetsAt
-            if let previous, window.resetsAt > previous, window.usedPercent < 50 {
+            lastCodexUse = window.usedPercent
+
+            let span = Double(window.windowMinutes) * 60
+            let rolledOver = previous.map {
+                window.resetsAt.timeIntervalSince($0) >= span * 0.5
+            } ?? false
+            let dropped = previousUse.map { $0 - window.usedPercent >= 20 } ?? false
+
+            if rolledOver, dropped, window.usedPercent < 50 {
                 onReset(.chatgpt, window)
-                announced[previous] = nil
+                if let previous { announced[previous] = nil }
             }
 
             var seen = announced[window.resetsAt] ?? []
@@ -250,7 +286,7 @@ final class UsageService: @unchecked Sendable {
         let root = NSHomeDirectory() + "/.codex/sessions"
         guard FileManager.default.fileExists(atPath: root) else { return nil }
 
-        var newest: (Date, [String: Any])?
+        var buckets: [String: (Date, [String: Any])] = [:]
         var samples: [(Date, Double)] = []
 
         for url in recentFiles(root, within: 86_400 * 3, limit: 8) {
@@ -270,7 +306,11 @@ final class UsageService: @unchecked Sendable {
                           as? [String: Any] else { continue }
 
                 let stamp = (obj["timestamp"] as? String).flatMap(parseDate) ?? .distantPast
-                if newest == nil || stamp > newest!.0 { newest = (stamp, limits) }
+                let bucket = limits["limit_id"] as? String ?? "unknown"
+                if buckets[bucket] == nil || stamp > buckets[bucket]!.0 {
+                    buckets[bucket] = (stamp, limits)
+                }
+                guard Self.isPlanBucket(bucket, limits) else { continue }
                 if let primary = limits["primary"] as? [String: Any],
                    let used = primary["used_percent"] as? Double {
                     samples.append((stamp, used))
@@ -278,7 +318,9 @@ final class UsageService: @unchecked Sendable {
             }
         }
 
-        guard let (measured, limits) = newest,
+        let plan = buckets.first { isPlanBucket($0.key, $0.value.1) }?.value
+        let chosen = plan ?? buckets.values.max { $0.0 < $1.0 }
+        guard let (measured, limits) = chosen,
               let primary = window(from: limits["primary"]) else { return nil }
 
         return CodexLimits(primary: primary,
@@ -315,6 +357,60 @@ final class UsageService: @unchecked Sendable {
         let hit = Date().addingTimeInterval(seconds)
         return RateProjection(percentPerHour: rate,
                               exhaustionAt: hit < window.resetsAt ? hit : nil)
+    }
+
+    static func isPlanBucket(_ id: String, _ limits: [String: Any]) -> Bool {
+        if id == "codex" { return true }
+        guard limits["plan_type"] is String else { return false }
+        return limits["secondary"] is [String: Any]
+    }
+
+    static func claudeLimit() -> ClaudeLimit? {
+        let root = NSHomeDirectory() + "/.claude/projects"
+        guard FileManager.default.fileExists(atPath: root) else { return nil }
+
+        var newest: (Date, [String: Any])?
+        for url in recentFiles(root, within: 86_400, limit: 8) {
+            guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
+            defer { try? handle.close() }
+            let size = (try? handle.seekToEnd()) ?? 0
+            try? handle.seek(toOffset: size > 2_000_000 ? size - 2_000_000 : 0)
+            let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
+
+            for line in text.split(separator: "\n") {
+                guard line.contains("quotaLimits"),
+                      let raw = line.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw)
+                          as? [String: Any],
+                      let quota = findQuota(obj) else { continue }
+                let stamp = (obj["timestamp"] as? String).flatMap(parseDate)
+                    ?? .distantPast
+                if newest == nil || stamp > newest!.0 { newest = (stamp, quota) }
+            }
+        }
+
+        guard let (_, quota) = newest,
+              let resets = quota["resetsAt"] as? Double else { return nil }
+        let at = Date(timeIntervalSince1970: resets)
+        guard at > Date() else { return nil }
+
+        return ClaudeLimit(kind: quota["rateLimitType"] as? String ?? "limit",
+                           resetsAt: at,
+                           blocked: (quota["status"] as? String) == "rejected")
+    }
+
+    private static func findQuota(_ value: Any) -> [String: Any]? {
+        if let dict = value as? [String: Any] {
+            if let quota = dict["quotaLimits"] as? [String: Any] { return quota }
+            for nested in dict.values {
+                if let found = findQuota(nested) { return found }
+            }
+        } else if let list = value as? [Any] {
+            for nested in list {
+                if let found = findQuota(nested) { return found }
+            }
+        }
+        return nil
     }
 
     private static func window(from value: Any?) -> RateWindow? {

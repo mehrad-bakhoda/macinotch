@@ -348,7 +348,17 @@ write is overwritten within about two seconds.
 `IOHIDEventSystem` calls resolved at runtime. `PMU tcal` is a calibration
 reference reading about 12 °C high and is excluded.
 
-**Only Codex reports its own limits.** Codex writes a `rate_limits` record
+**Codex reports several limits, not one.** Each record carries a `limit_id`,
+and only one of them is the plan limit. Trusting the most recent record means
+reading whichever pool happened to be written last, which is real data about
+something else entirely. Claude Code now writes `quotaLimits` too, carrying a
+type and a reset time but no percentage.
+
+**A rolling window is not a reset.** The reserve window advances its reset time
+continuously, so any test for the reset time moving forward fires forever. A
+reset is a rollover of at least half the window together with a fall in usage.
+
+**Only Codex reports a percentage.** Codex writes a `rate_limits` record
 into its rollout transcripts carrying `used_percent`, `window_minutes` and
 `resets_at` for a five hour and a weekly window, so those figures are exact.
 Claude Code writes no quota, reset or limit field anywhere under `~/.claude`,
