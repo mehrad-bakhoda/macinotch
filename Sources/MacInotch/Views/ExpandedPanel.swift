@@ -19,6 +19,7 @@ struct ExpandedPanel: View {
     @ObservedObject private var shelfStore = ShelfStore.shared
     @ObservedObject private var calendar = CalendarService.shared
     @ObservedObject private var fanControl = FanControlClient.shared
+    @ObservedObject private var can = Capabilities.shared
     @ObservedObject private var nav = SettingsNav.shared
     @ObservedObject private var hover = HoverTracker.shared
     @ObservedObject private var clipboard = ClipboardService.shared
@@ -84,9 +85,15 @@ struct ExpandedPanel: View {
         p.showCPU || p.showRAM || (p.showBattery && state.battery.present)
             || showsTemp || showsFans || showsPower
     }
-    private var showsTemp: Bool { p.showTemperature && state.temps.available }
-    private var showsFans: Bool { p.showFans && !state.fans.fans.isEmpty }
-    private var showsPower: Bool { p.showPower && state.fans.systemWatts > 0 }
+    private var showsTemp: Bool {
+        p.showTemperature && can.temperature && state.temps.available
+    }
+    private var showsFans: Bool {
+        p.showFans && can.fans && !state.fans.fans.isEmpty
+    }
+    private var showsPower: Bool {
+        p.showPower && can.power && state.fans.systemWatts > 0
+    }
     private struct QuickButton: View {
         var symbol: String
         var label: String
@@ -1985,7 +1992,7 @@ struct ExpandedPanel: View {
                 detail: fanDetail, fraction: fan.fraction,
                 tint: t.load(fan.fraction), theme: t)))
         }
-        if p.showPower && state.fans.systemWatts > 0 {
+        if showsPower {
             out.append(AnyView(VitalColumn(
                 label: "Power", value: String(format: "%.0f", state.fans.systemWatts),
                 unit: "W", detail: state.battery.isCharging ? "charging" : "system",

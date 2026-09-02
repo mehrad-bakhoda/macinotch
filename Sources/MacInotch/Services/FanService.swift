@@ -40,12 +40,36 @@ final class FanService: @unchecked Sendable {
         self.onUpdate = onUpdate
     }
 
+    private var emptyPolls = 0
+    private var interval: TimeInterval = 3
+
     func start(interval: TimeInterval = 3) {
+        self.interval = interval
+        schedule(interval)
+    }
+
+    private func schedule(_ every: TimeInterval) {
+        timer?.cancel()
         let t = DispatchSource.makeTimerSource(queue: queue)
-        t.schedule(deadline: .now(), repeating: interval)
+        t.schedule(deadline: .now(), repeating: every)
         t.setEventHandler { [weak self] in self?.tick() }
         t.resume()
         timer = t
+    }
+
+    private func backOffIfIdle(_ snapshot: FanSnapshot) {
+        guard snapshot.fans.isEmpty else {
+            if emptyPolls > 0 { emptyPolls = 0; schedule(interval) }
+            return
+        }
+        emptyPolls += 1
+        guard emptyPolls == 6 else { return }
+        if snapshot.systemWatts > 0 {
+            schedule(30)
+        } else {
+            timer?.cancel()
+            timer = nil
+        }
     }
 
     func stop() { timer?.cancel(); timer = nil }
@@ -53,6 +77,8 @@ final class FanService: @unchecked Sendable {
     private func tick() {
         var snap = FanSnapshot()
         guard let count = SMC.shared.read("FNum"), count > 0 else {
+            snap.systemWatts = SMC.shared.read("PSTR") ?? 0
+            backOffIfIdle(snap)
             onUpdate(snap)
             return
         }
@@ -72,6 +98,7 @@ final class FanService: @unchecked Sendable {
         snap.systemWatts = SMC.shared.read("PSTR")
             ?? SMC.shared.read("PPBR") ?? 0
 
+        backOffIfIdle(snap)
         onUpdate(snap)
     }
 }

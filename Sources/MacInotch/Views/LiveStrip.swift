@@ -6,6 +6,7 @@ struct LiveStrip: View {
     @ObservedObject private var themes = ThemeManager.shared
     @ObservedObject private var timer = TimerService.shared
     @ObservedObject private var weather = WeatherService.shared
+    @ObservedObject private var can = Capabilities.shared
 
     private var t: Theme { themes.theme }
     private var p: PrefsData { prefs.d }

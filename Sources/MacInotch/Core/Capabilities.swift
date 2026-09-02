@@ -9,8 +9,12 @@ final class Capabilities: ObservableObject {
     @Published private(set) var power = false
     @Published private(set) var battery = false
 
+    private static let forceNone =
+        ProcessInfo.processInfo.environment["MACINOTCH_NO_SENSORS"] == "1"
+
     private init() {
         let p = Prefs.shared.d
+        if Self.forceNone { return }
         fans = p.seenFans
         temperature = p.seenTemperature
         power = p.seenPower
@@ -23,6 +27,7 @@ final class Capabilities: ObservableObject {
     var notch: Bool { NotchState.shared.hasRealNotch }
 
     func observe(_ state: NotchState) {
+        guard !Self.forceNone else { return }
         note(&fans, state.fans.available && !state.fans.fans.isEmpty,
              \.seenFans)
         note(&temperature, state.temps.available && state.temps.soc > 0,
