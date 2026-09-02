@@ -7,13 +7,14 @@ struct NotchGeometry {
     var notchHeight: CGFloat
     var hasRealNotch: Bool
 
+    @MainActor
     static func detect(preferring target: NSScreen? = nil) -> NotchGeometry {
         let screen = target
             ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
             ?? NSScreen.main!
         let inset = screen.safeAreaInsets.top
 
-        if inset > 0,
+        if inset > 0, !Prefs.shared.d.pretendNoNotch,
            let left = screen.auxiliaryTopLeftArea,
            let right = screen.auxiliaryTopRightArea {
             let w = screen.frame.width - left.width - right.width
@@ -21,9 +22,10 @@ struct NotchGeometry {
                                  notchHeight: inset, hasRealNotch: true)
         }
 
-        return NotchGeometry(screen: screen, notchWidth: 190,
-                             notchHeight: max(screen.frame.height > 0 ? 32 : 32, 32),
-                             hasRealNotch: false)
+        let width = max(120, Prefs.shared.d.virtualNotchWidth)
+        let height = max(24, Prefs.shared.d.virtualNotchHeight)
+        return NotchGeometry(screen: screen, notchWidth: width,
+                             notchHeight: height, hasRealNotch: false)
     }
 }
 
@@ -111,6 +113,7 @@ final class NotchWindowController {
 
     private func applyGeometry() {
         state.notchSize = CGSize(width: geometry.notchWidth, height: geometry.notchHeight)
+        state.hasRealNotch = geometry.hasRealNotch
     }
 
     private func reposition() {

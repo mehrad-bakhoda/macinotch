@@ -179,10 +179,12 @@ struct NotchRootView: View {
             PanelSurface(shape: shape, theme: t, glass: prefs.d.glassEnabled)
             innerGlow
 
-            NotchShape(bottomRadius: hardwareRadius, topRadius: 0)
-                .fill(Color.black)
-                .frame(width: state.notchSize.width, height: state.notchSize.height)
-                .allowsHitTesting(false)
+            if state.hasRealNotch {
+                NotchShape(bottomRadius: hardwareRadius, topRadius: 0)
+                    .fill(Color.black)
+                    .frame(width: state.notchSize.width, height: state.notchSize.height)
+                    .allowsHitTesting(false)
+            }
 
             contentLayer
         }

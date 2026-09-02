@@ -47,7 +47,14 @@ struct WorkHistory: Equatable {
     }
 }
 
+struct Beat {
+    var date: Date
+    var cwd: String
+}
+
 final class ProjectTime: @unchecked Sendable {
+    private static let beats = LineCache<Beat>(cap: 20000)
+
     private let queue = DispatchQueue(label: "io.macinotch.projecttime")
     private var timer: DispatchSourceTimer?
     private let onUpdate: @Sendable ([ProjectSpan]) -> Void
@@ -168,31 +175,24 @@ final class ProjectTime: @unchecked Sendable {
                 .contentModificationDate ?? .distantPast
             guard modified >= since else { continue }
 
-            guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
-            defer { try? handle.close() }
-            let size = (try? handle.seekToEnd()) ?? 0
-            try? handle.seek(toOffset: size > 4_000_000 ? size - 4_000_000 : 0)
-            let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
-
             var name = provider == "claude"
                 ? url.deletingLastPathComponent().lastPathComponent : ""
             var dates: [Date] = []
 
-            for line in text.split(separator: "\n") {
+            for beat in beats.items(at: url, parse: { line in
                 guard let raw = line.data(using: .utf8),
                       let object = try? JSONSerialization.jsonObject(with: raw)
-                          as? [String: Any] else { continue }
-
-                if name.isEmpty || provider == "claude",
-                   let cwd = (object["payload"] as? [String: Any])?["cwd"] as? String
-                       ?? object["cwd"] as? String {
-                    name = (cwd as NSString).lastPathComponent
+                          as? [String: Any],
+                      let stamp = object["timestamp"] as? String,
+                      let date = UsageService.parseDate(stamp) else { return nil }
+                let cwd = (object["payload"] as? [String: Any])?["cwd"] as? String
+                    ?? object["cwd"] as? String ?? ""
+                return Beat(date: date, cwd: cwd)
+            }) {
+                if !beat.cwd.isEmpty, name.isEmpty || provider == "claude" {
+                    name = (beat.cwd as NSString).lastPathComponent
                 }
-                guard let stamp = object["timestamp"] as? String,
-                      let date = UsageService.parseDate(stamp), date >= since else {
-                    continue
-                }
-                dates.append(date)
+                if beat.date >= since { dates.append(beat.date) }
             }
 
             let key = Self.pretty(name)

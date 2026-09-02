@@ -102,6 +102,7 @@ final class NotchState: ObservableObject {
     @Published var workHistory = WorkHistory()
 
     @Published var notchSize: CGSize = CGSize(width: 200, height: 32)
+    @Published var hasRealNotch = true
 
     @Published var measuredExpandedHeight: CGFloat = 240
 

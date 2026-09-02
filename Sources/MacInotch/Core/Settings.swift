@@ -101,6 +101,9 @@ struct PrefsData: Codable, Equatable {
     var autoCollapse         = true
     var collapseDelay        = 0.0
     var ambientTimeout       = 45.0
+    var virtualNotchWidth    = 190.0
+    var virtualNotchHeight   = 32.0
+    var pretendNoNotch       = false
     var cueMail              = "mail"
     var cueBuildFailure      = "failure"
     var cueLimitWarning      = "attention"

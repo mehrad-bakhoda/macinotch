@@ -109,15 +109,18 @@ Measured on an Apple Silicon MacBook running everything at once.
 | Download | 3.9 MB |
 | Installed | 10 MB |
 | Dirty memory at rest | around 110 MB |
-| Idle processor use | around 10 percent with every service on |
+| Idle processor use | around 13 percent of one core, near 1 percent of a twelve core machine |
 
 Resident memory reads far higher than the dirty figure because the speech and
 language models macOS provides are mapped in rather than copied, and those pages
-are shared. Idle processor use is higher than it ought to be for something that
-sits in the menu bar, and is being worked on: temperatures are read every twelve
-seconds rather than five, and the state mirror is rebuilt every three seconds
-while the panel is closed rather than twice a second. Turning off services you
-do not use lowers both figures.
+are shared.
+
+Processor use is quoted against a single core, which is how `ps` reports it. A
+figure near thirteen means an eighth of one core out of twelve, so around one
+percent of the machine. It was nearly twice that until the transcript readers
+stopped re-reading files that had not changed: each file is now parsed once and
+then only from wherever the last read stopped, so a session that has been idle
+for an hour costs nothing to look at again.
 
 ## Install
 
@@ -452,6 +455,16 @@ reading that terminates.
 invented mail, accounts and repositories and silences the live pollers so they
 cannot overwrite it, which is what makes it safe to photograph the app for a
 public page.
+
+**Transcripts are appended to, never rewritten.** That makes them cheap to
+follow, and expensive to re-read. Everything reading them keeps the byte offset
+it stopped at and parses only what arrived since, which is the difference
+between reading a few kilobytes and a few megabytes on every poll.
+
+**Not every Mac has a notch.** Where there is none, an Air or any external
+display, a rounded bar is drawn in the same position rather than a black shape
+imitating hardware that is not there. `hasRealNotch` was being computed and then
+ignored, which meant those machines got the imitation.
 
 **Battery capacity is nested.** The top-level `MaxCapacity` is a percentage;
 the real figures live in the `BatteryData` dictionary.

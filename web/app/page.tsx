@@ -187,6 +187,7 @@ export default function Home() {
             ['3.9 MB', 'to download'],
             ['10 MB', 'installed'],
             ['~110 MB', 'dirty memory at rest'],
+            ['~1%', 'of a twelve core machine at rest'],
           ].map(([value, label]) => (
             <div key={label} className="rounded-xl border border-line bg-panel p-4">
               <div className="font-display text-[22px] font-semibold tabular-nums">{value}</div>
@@ -196,9 +197,13 @@ export default function Home() {
         </div>
         <p className="mt-3 font-mono text-[11.5px] leading-relaxed text-faint">
           Resident memory reads higher because the language and speech models macOS
-          provides are mapped in rather than copied. Idle processor use sits around
-          ten percent while everything is switched on, which is more than it should
-          be and is being worked on. Switching off what you do not use lowers it.
+          provides are mapped in rather than copied. Processor use is quoted against
+          a single core the way the system reports it, so thirteen percent of one
+          core is close to one percent of a twelve core machine. Readers of the
+          session transcripts keep their place and parse only what has arrived
+          since, so files that have not changed cost nothing to look at again.
+          Macs without a notch, an Air or anything on an external display, get a
+          rounded bar in the same place.
         </p>
       </Section>
 

@@ -386,6 +386,33 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Displays without a notch") {
+                Toggle("Draw a bar instead of a notch", isOn: $prefs.d.pretendNoNotch)
+                LabeledContent("Bar width") {
+                    HStack {
+                        Slider(value: $prefs.d.virtualNotchWidth, in: 120...420, step: 10)
+                            .frame(width: 130)
+                        Text("\(Int(prefs.d.virtualNotchWidth))")
+                            .font(.caption).monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+                LabeledContent("Bar height") {
+                    HStack {
+                        Slider(value: $prefs.d.virtualNotchHeight, in: 24...48, step: 1)
+                            .frame(width: 130)
+                        Text("\(Int(prefs.d.virtualNotchHeight))")
+                            .font(.caption).monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+                Text("Macs without a notch, an Air or anything on an external display, "
+                     + "get a rounded bar in the same place rather than a black shape "
+                     + "pretending to be hardware. This is detected on its own; the "
+                     + "switch is for forcing it. Restart to apply a change.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Notch as a control") {
                 Toggle("Drag across the notch to adjust", isOn: $prefs.d.stripEnabled)
                 Picker("Dragging changes", selection: $prefs.d.stripDefault) {

@@ -237,6 +237,20 @@ final class UsageService: @unchecked Sendable {
         return found.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
     }
 
+    struct Sample {
+        var date: Date
+        var tokens: Int
+    }
+
+    struct LimitSample {
+        var date: Date
+        var limits: [String: Any]
+    }
+
+    private static let claudeCache = LineCache<Sample>(containing: "\"usage\"")
+    private static let codexCache = LineCache<Sample>(containing: "token_count")
+    private static let limitCache = LineCache<LimitSample>(containing: "rate_limits")
+
     private static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -258,26 +272,22 @@ final class UsageService: @unchecked Sendable {
         var earliest = Date()
 
         for url in recentFiles(root, within: window + 3600, limit: 24) {
-            guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
-            defer { try? handle.close() }
-            let size = (try? handle.seekToEnd()) ?? 0
-            try? handle.seek(toOffset: size > 3_000_000 ? size - 3_000_000 : 0)
-            let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
-
-            for line in text.split(separator: "\n") {
-                guard line.contains("\"usage\""),
-                      let raw = line.data(using: .utf8),
-                      let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+            for sample in claudeCache.items(at: url, parse: { line in
+                guard let raw = line.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw)
+                          as? [String: Any],
                       let stamp = obj["timestamp"] as? String,
-                      let date = parseDate(stamp), date >= cutoff,
+                      let date = parseDate(stamp),
                       let message = obj["message"] as? [String: Any],
-                      let usage = message["usage"] as? [String: Any] else { continue }
-
-                messages += 1
-                tokens += (usage["input_tokens"] as? Int ?? 0)
+                      let usage = message["usage"] as? [String: Any] else { return nil }
+                let total = (usage["input_tokens"] as? Int ?? 0)
                     + (usage["output_tokens"] as? Int ?? 0)
                     + (usage["cache_creation_input_tokens"] as? Int ?? 0)
-                earliest = min(earliest, date)
+                return Sample(date: date, tokens: total)
+            }) where sample.date >= cutoff {
+                messages += 1
+                tokens += sample.tokens
+                earliest = min(earliest, sample.date)
             }
         }
         guard messages > 0 else { return nil }
@@ -294,28 +304,25 @@ final class UsageService: @unchecked Sendable {
         var earliest = Date()
 
         for url in recentFiles(root, within: window + 3600, limit: 24) {
-            guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
-            defer { try? handle.close() }
-            let size = (try? handle.seekToEnd()) ?? 0
-            try? handle.seek(toOffset: size > 3_000_000 ? size - 3_000_000 : 0)
-            let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
-
-            for line in text.split(separator: "\n") {
-                guard line.contains("token_count"),
-                      let raw = line.data(using: .utf8),
-                      let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+            for sample in codexCache.items(at: url, parse: { line in
+                guard let raw = line.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw)
+                          as? [String: Any],
                       let stamp = obj["timestamp"] as? String,
-                      let date = parseDate(stamp), date >= cutoff,
+                      let date = parseDate(stamp),
                       let payload = obj["payload"] as? [String: Any],
                       payload["type"] as? String == "token_count",
                       let info = payload["info"] as? [String: Any],
-                      let last = info["last_token_usage"] as? [String: Any] else { continue }
-
-                messages += 1
+                      let last = info["last_token_usage"] as? [String: Any]
+                else { return nil }
                 let cached = last["cached_input_tokens"] as? Int ?? 0
-                tokens += max(0, (last["input_tokens"] as? Int ?? 0) - cached)
+                let total = max(0, (last["input_tokens"] as? Int ?? 0) - cached)
                     + (last["output_tokens"] as? Int ?? 0)
-                earliest = min(earliest, date)
+                return Sample(date: date, tokens: total)
+            }) where sample.date >= cutoff {
+                messages += 1
+                tokens += sample.tokens
+                earliest = min(earliest, sample.date)
             }
         }
         guard messages > 0 else { return nil }
@@ -326,47 +333,44 @@ final class UsageService: @unchecked Sendable {
         let root = NSHomeDirectory() + "/.codex/sessions"
         guard FileManager.default.fileExists(atPath: root) else { return nil }
 
-        var buckets: [String: (Date, [String: Any])] = [:]
+        var buckets: [String: LimitSample] = [:]
         var samples: [(Date, Double)] = []
 
         for url in recentFiles(root, within: 86_400 * 3, limit: 8) {
-            guard let handle = FileHandle(forReadingAtPath: url.path) else { continue }
-            defer { try? handle.close() }
-            let size = (try? handle.seekToEnd()) ?? 0
-            try? handle.seek(toOffset: size > 2_000_000 ? size - 2_000_000 : 0)
-            let text = String(decoding: (try? handle.readToEnd()) ?? Data(), as: UTF8.self)
-
-            for line in text.split(separator: "\n") {
-                guard line.contains("rate_limits"),
-                      let raw = line.data(using: .utf8),
-                      let obj = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+            for record in limitCache.items(at: url, parse: { line in
+                guard let raw = line.data(using: .utf8),
+                      let obj = try? JSONSerialization.jsonObject(with: raw)
+                          as? [String: Any],
                       let payload = obj["payload"] as? [String: Any],
                       let limits = (payload["rate_limits"]
                                     ?? (payload["info"] as? [String: Any])?["rate_limits"])
-                          as? [String: Any] else { continue }
-
-                let stamp = (obj["timestamp"] as? String).flatMap(parseDate) ?? .distantPast
-                let bucket = limits["limit_id"] as? String ?? "unknown"
-                if buckets[bucket] == nil || stamp > buckets[bucket]!.0 {
-                    buckets[bucket] = (stamp, limits)
+                          as? [String: Any] else { return nil }
+                let stamp = (obj["timestamp"] as? String).flatMap(parseDate)
+                    ?? .distantPast
+                return LimitSample(date: stamp, limits: limits)
+            }) {
+                let bucket = record.limits["limit_id"] as? String ?? "unknown"
+                if buckets[bucket] == nil || record.date > buckets[bucket]!.date {
+                    buckets[bucket] = record
                 }
-                guard Self.isPlanBucket(bucket, limits) else { continue }
-                if let primary = limits["primary"] as? [String: Any],
+                guard Self.isPlanBucket(bucket, record.limits) else { continue }
+                if let primary = record.limits["primary"] as? [String: Any],
                    let used = primary["used_percent"] as? Double {
-                    samples.append((stamp, used))
+                    samples.append((record.date, used))
                 }
             }
         }
 
-        let plan = buckets.first { isPlanBucket($0.key, $0.value.1) }?.value
-        let chosen = plan ?? buckets.values.max { $0.0 < $1.0 }
-        guard let (measured, limits) = chosen,
-              let primary = window(from: limits["primary"]) else { return nil }
+        let plan = buckets.first { isPlanBucket($0.key, $0.value.limits) }?.value
+        let chosen = plan ?? buckets.values.max { $0.date < $1.date }
+        guard let chosen, let primary = window(from: chosen.limits["primary"]) else {
+            return nil
+        }
 
         return CodexLimits(primary: primary,
-                           secondary: window(from: limits["secondary"]),
-                           plan: limits["plan_type"] as? String ?? "",
-                           measuredAt: measured,
+                           secondary: window(from: chosen.limits["secondary"]),
+                           plan: chosen.limits["plan_type"] as? String ?? "",
+                           measuredAt: chosen.date,
                            projection: project(primary, samples: samples))
     }
 
