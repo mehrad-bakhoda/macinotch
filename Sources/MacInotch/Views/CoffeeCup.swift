@@ -63,7 +63,8 @@ struct CoffeeCup: View {
     var body: some View {
         GeometryReader { geo in
             let side = min(geo.size.width, geo.size.height)
-            let cup = CGRect(x: 0, y: side * 0.30, width: side, height: side * 0.70)
+            let lift = active ? side * 0.22 : side * 0.12
+            let cup = CGRect(x: 0, y: lift, width: side, height: side * 0.76)
 
             ZStack(alignment: .topLeading) {
                 if active {
@@ -74,7 +75,7 @@ struct CoffeeCup: View {
                             wisp(time: time, offset: 1.7, x: 0, side: side)
                             wisp(time: time, offset: 3.1, x: side * 0.14, side: side)
                         }
-                        .frame(width: side, height: side * 0.30)
+                        .frame(width: side, height: max(1, lift))
                     }
                 }
 

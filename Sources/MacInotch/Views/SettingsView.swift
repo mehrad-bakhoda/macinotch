@@ -489,10 +489,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
 
                 Toggle("Trace the notch with a status colour", isOn: $prefs.d.ambientGlow)
-                Text("Red for a failed workflow or a spent limit, amber as one gets "
-                     + "close, and a slow pulse while recording or when Claude Code is "
-                     + "waiting on you.")
-                    .font(.caption).foregroundStyle(.secondary)
+                if prefs.d.ambientGlow { ambientControls }
             }
 
             Section("Meeting notes") {
@@ -1238,6 +1235,69 @@ struct SettingsView: View {
             } label: { Image(systemName: "doc.on.doc") }
                 .buttonStyle(.borderless)
         }
+    }
+
+    private func ambientColor(_ key: WritableKeyPath<PrefsData, String>,
+                              _ fallback: String) -> Binding<Color> {
+        Binding(
+            get: { Color(hex: prefs.d[keyPath: key]) ?? Color(hex: fallback)! },
+            set: { prefs.d[keyPath: key] = $0.hexString })
+    }
+
+    private var ambientControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Style", selection: $prefs.d.ambientStyle) {
+                Text("Soft glow").tag("glow")
+                Text("Hairline").tag("hairline")
+                Text("Sweep").tag("sweep")
+            }
+
+            LabeledContent("Thickness") {
+                Slider(value: $prefs.d.ambientWidth, in: 0.8...3.5).frame(width: 150)
+            }
+            LabeledContent("Brightness") {
+                Slider(value: $prefs.d.ambientIntensity, in: 0.2...1).frame(width: 150)
+            }
+            LabeledContent("Pulse speed") {
+                Slider(value: $prefs.d.ambientSpeed, in: 0.3...2.5).frame(width: 150)
+            }
+
+            Divider()
+
+            Text("What it reacts to")
+                .font(.caption).foregroundStyle(.secondary)
+
+            HStack {
+                Toggle("A workflow failed", isOn: $prefs.d.ambientOnFailure)
+                Spacer()
+                ColorPicker("", selection: ambientColor(\.ambientColorFailure, "#FF453A"))
+                    .labelsHidden()
+            }
+            HStack {
+                Toggle("A usage limit is close", isOn: $prefs.d.ambientOnLimit)
+                Spacer()
+                ColorPicker("", selection: ambientColor(\.ambientColorLimit, "#FF9F0A"))
+                    .labelsHidden()
+            }
+            HStack {
+                Toggle("Something is waiting on you", isOn: $prefs.d.ambientOnWaiting)
+                Spacer()
+                ColorPicker("", selection: ambientColor(\.ambientColorWaiting, "#0A84FF"))
+                    .labelsHidden()
+            }
+            HStack {
+                Toggle("Recording a meeting", isOn: $prefs.d.ambientOnRecord)
+                Spacer()
+                ColorPicker("", selection: ambientColor(\.ambientColorRecord, "#FF375F"))
+                    .labelsHidden()
+            }
+
+            Text("Only one shows at a time, in the order listed. Off by default, "
+                 + "because a permanent outline is a change to a machine you look at "
+                 + "all day.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.leading, 6)
     }
 
     private var accountList: some View {

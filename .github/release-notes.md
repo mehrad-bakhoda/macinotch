@@ -1,28 +1,24 @@
-Meetings that write themselves up, without leaving the machine.
+The outline is off unless you ask for it, and looks like something now.
 
-### Meeting notes
+### Ambient outline
 
-Start a recording from the meeting button, or have it start itself when a call
-with a join link begins. Your microphone is captured always, and the audio your
-Mac is playing as well, so the other side of a call is included.
+It was a flat stroke of one colour, on by default. Both were wrong.
 
-The speech model built into macOS transcribes it. The on device language model
-turns the transcript into decisions, actions and open questions, and the whole
-thing is saved as a markdown note beside your others with the transcript kept
-underneath it.
+It is off until you turn it on, because a permanent ring around the notch is a
+change to a machine you look at all day and not something to inherit from an
+update. Once on it offers three styles: a soft glow that blooms outward, a
+crisp hairline, and a sweep that carries the colour unevenly around the
+outline. Thickness, brightness and pulse speed are yours.
 
-Nothing is uploaded, no account is involved and no key is needed. A transcript
-is imperfect, so the summariser is told to leave a heading empty rather than
-invent a name, a date or a figure the transcript does not support.
+Each of the four things it reacts to can be switched off on its own and given
+its own colour: a failed workflow, a limit getting close, something waiting on
+you, and recording. Only one shows at a time, in that order.
 
-Capturing the other side needs Screen Recording permission. Recording a call
-may need everyone's agreement where you are.
+### The cup
 
-### The site
-
-The notch on the front page was a rough sketch of the real thing. It now mirrors
-the actual panel: every tab, the quick actions row, the clock with its second
-calendar, now playing, the vitals strip, and the usage rows underneath.
+It sat low in its circle, out of line with the icons beside it, and the gap
+above it only made sense while it was steaming. It now sits where the others
+do, and takes the room for steam only when there is steam.
 
 ### Install
 

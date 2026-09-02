@@ -89,6 +89,8 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
 - Screen recording started from the shelf, with the file parked there when done
 - Focus state in the panel, toggled through a Shortcut you choose
 - Notification history, searchable and persistent
+- An optional outline round the notch carrying one state as colour, in a soft
+  glow, a hairline or a sweep, each trigger switchable and separately coloured
 - Light and dark themes, Liquid Glass on macOS 26+, six opening animations
 
 ---

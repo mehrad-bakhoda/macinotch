@@ -43,29 +43,94 @@ struct NotchRootView: View {
         state.mode == .collapsed && state.isLive && state.usesChin
     }
 
-    private var ambientSignal: (Color, Bool)? {
-        guard prefs.d.ambientGlow else { return nil }
-        if MeetingRecorder.shared.recording { return (t.red, true) }
-        if !GitHubService.shared.snapshot.failures.isEmpty { return (t.red, false) }
-        if let limits = state.usage.codexLimits {
-            if limits.primary.usedPercent >= 95 { return (t.red, false) }
-            if limits.primary.usedPercent >= 80 { return (t.orange, false) }
+    private struct AmbientSignal {
+        var color: Color
+        var pulses: Bool
+    }
+
+    private var ambientSignal: AmbientSignal? {
+        let p = prefs.d
+        guard p.ambientGlow else { return nil }
+
+        func tint(_ hex: String, _ fallback: Color) -> Color {
+            Color(hex: hex) ?? fallback
         }
-        if state.presence.claudeCode && state.hasAttention { return (t.accent, true) }
+
+        if p.ambientOnRecord && MeetingRecorder.shared.recording {
+            return AmbientSignal(color: tint(p.ambientColorRecord, t.red), pulses: true)
+        }
+        if p.ambientOnFailure && !GitHubService.shared.snapshot.failures.isEmpty {
+            return AmbientSignal(color: tint(p.ambientColorFailure, t.red), pulses: false)
+        }
+        if p.ambientOnLimit, let limits = state.usage.codexLimits {
+            if limits.primary.usedPercent >= 95 {
+                return AmbientSignal(color: tint(p.ambientColorFailure, t.red),
+                                     pulses: false)
+            }
+            if limits.primary.usedPercent >= 80 {
+                return AmbientSignal(color: tint(p.ambientColorLimit, t.orange),
+                                     pulses: false)
+            }
+        }
+        if p.ambientOnWaiting && state.hasAttention {
+            return AmbientSignal(color: tint(p.ambientColorWaiting, t.accent),
+                                 pulses: true)
+        }
         return nil
+    }
+
+    @ViewBuilder
+    private func ambientStroke(_ signal: AmbientSignal, _ level: Double) -> some View {
+        let width = prefs.d.ambientWidth
+        let style = prefs.d.ambientStyle
+
+        switch style {
+        case "hairline":
+            shape.stroke(signal.color.opacity(level), lineWidth: width)
+
+        case "sweep":
+            shape.stroke(
+                AngularGradient(
+                    colors: [signal.color.opacity(level * 0.12),
+                             signal.color.opacity(level),
+                             signal.color.opacity(level * 0.45),
+                             signal.color.opacity(level),
+                             signal.color.opacity(level * 0.12)],
+                    center: .center),
+                lineWidth: width)
+
+        default:
+            ZStack {
+                shape.stroke(signal.color.opacity(level * 0.55),
+                             lineWidth: width * 3.2)
+                    .blur(radius: width * 2.4)
+                shape.stroke(signal.color.opacity(level * 0.85),
+                             lineWidth: width * 1.6)
+                    .blur(radius: width * 0.7)
+                shape.stroke(
+                    LinearGradient(
+                        colors: [signal.color.opacity(level),
+                                 signal.color.opacity(level * 0.5),
+                                 signal.color.opacity(level * 0.95)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: width)
+            }
+        }
     }
 
     @ViewBuilder private var ambientGlow: some View {
         if let signal = ambientSignal {
-            if signal.1 {
-                TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { line in
+            let base = prefs.d.ambientIntensity
+            if signal.pulses {
+                TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { line in
                     let phase = line.date.timeIntervalSinceReferenceDate
-                    let wave = 0.40 + 0.38 * (0.5 + 0.5 * sin(phase * 2.0))
-                    shape.stroke(signal.0.opacity(wave), lineWidth: 1.4)
+                        * max(0.2, prefs.d.ambientSpeed)
+                    let eased = pow(0.5 + 0.5 * sin(phase * 1.7), 1.8)
+                    ambientStroke(signal, base * (0.35 + 0.65 * eased))
                 }
                 .allowsHitTesting(false)
             } else {
-                shape.stroke(signal.0.opacity(0.72), lineWidth: 1.4)
+                ambientStroke(signal, base)
                     .allowsHitTesting(false)
             }
         }
