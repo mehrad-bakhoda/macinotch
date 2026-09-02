@@ -80,8 +80,28 @@ jobs:
       - name: Archive
         run: ditto -c -k --sequesterRsrc --keepParent build/MacInotch.app MacInotch.zip
 
+      - name: Disk image
+        run: |
+          set -euo pipefail
+          ROOT=build/dmgroot
+          rm -rf "$ROOT" rw.dmg MacInotch.dmg
+          mkdir -p "$ROOT/.background"
+
+          ditto build/MacInotch.app "$ROOT/MacInotch.app"
+          cp Resources/dmg/background.png "$ROOT/.background/background.png"
+          cp Resources/dmg/DS_Store "$ROOT/.DS_Store"
+          ln -s /Applications "$ROOT/Applications"
+
+          hdiutil create -srcfolder "$ROOT" -volname "MacInotch" -fs HFS+ \
+            -format UDRW -ov rw.dmg
+          hdiutil convert rw.dmg -format UDZO -imagekey zlib-level=9 -o MacInotch.dmg
+          rm -f rw.dmg
+          ls -lh MacInotch.dmg
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: MacInotch.zip
+          files: |
+            MacInotch.dmg
+            MacInotch.zip
           generate_release_notes: true
           body_path: .github/release-notes.md

@@ -126,9 +126,10 @@ for an hour costs nothing to look at again.
 
 ### Download
 
-Grab the latest `.app` from
-[Releases](https://github.com/mehrad-bakhoda/macinotch/releases), move it to
-`/Applications`, and open it.
+Grab
+[MacInotch.dmg](https://github.com/mehrad-bakhoda/macinotch/releases/latest/download/MacInotch.dmg),
+open it, and drag the app across to Applications. A zip of the bundle is
+attached to each release as well, for anyone who would rather have one.
 
 The build is ad-hoc signed, so the first launch needs a right-click → **Open**,
 or:

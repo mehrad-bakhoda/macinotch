@@ -4,6 +4,7 @@ import Shots from '@/components/Shots';
 import Terminal from '@/components/Terminal';
 
 const REPO = 'https://github.com/mehrad-bakhoda/macinotch';
+const DMG = `${REPO}/releases/latest/download/MacInotch.dmg`;
 const BASE = process.env.GITHUB_ACTIONS === 'true' ? '/macinotch' : '';
 
 const CAPABILITIES: [string, string, string][] = [
@@ -96,10 +97,10 @@ export default function Home() {
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <a
-                  href={`${REPO}/releases/latest`}
+                  href={DMG}
                   className="flex-1 rounded-xl bg-gradient-to-b from-gold to-ember px-6 py-3 text-center font-display text-[15px] font-semibold text-[#1a1004] transition hover:brightness-110 sm:flex-none"
                 >
-                  Download for macOS
+                  Download the disk image
                 </a>
                 <a
                   href={REPO}
@@ -109,7 +110,7 @@ export default function Home() {
                 </a>
               </div>
               <p className="mt-4 font-mono text-[11.5px] text-faint">
-                macOS 14+ · Apple silicon and Intel · no telemetry
+                macOS 14+ · Apple silicon and Intel · no telemetry · 4.9 MB
               </p>
             </div>
 
@@ -123,7 +124,7 @@ export default function Home() {
       <Section
         index="01 / Install"
         title="Two minutes."
-        lede="Download a build, or compile it yourself with the Command Line Tools."
+        lede="Open the disk image, drag it across, done."
         >
         <div className="min-w-0 space-y-6">
           <pre className="overflow-x-auto rounded-xl border border-line bg-panel p-4 font-mono text-[11px] leading-relaxed sm:text-[12.5px]">

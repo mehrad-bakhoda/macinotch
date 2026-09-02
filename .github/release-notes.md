@@ -1,32 +1,28 @@
-The Codex figure was showing the wrong limit, and saying so too often.
+A disk image, so installing is a drag rather than a chore.
 
-### It was reading someone else's number
+### Installing
 
-Codex writes several kinds of rate limit, each tagged with a limit id. Your plan
-limit is one of them; others cover separate pools entirely. The code took
-whichever record was written most recently and believed it, so a reserve pool
-sitting at zero on a seven day window replaced the plan limit that was actually
-constraining you. What it showed was real data about the wrong thing.
+Releases now carry MacInotch.dmg. Opening it shows the application beside a
+shortcut to Applications, with an arrow between them, which is how every other
+Mac application asks to be installed. Dragging it across is the whole procedure.
 
-The plan limit is now picked out by name, and the five hour and weekly windows
-come from that record alone.
+The window layout travels with the image rather than being arranged by scripting
+Finder during the build, because the machine that builds it has no one logged in
+to arrange anything. The zip is still attached for anyone who prefers it.
 
-### It announced a reset every few minutes
+The download button on the site now fetches the disk image directly instead of
+sending you to a releases page to find it.
 
-That reserve window rolls forward continuously, a minute or two at a time, and
-a reset was declared whenever the reset time moved at all. Moving forward is
-what a rolling window does. A reset is now only called when the window rolls
-over by at least half its length and usage actually falls, which is what a
-reset looks like from outside.
+### Before that
 
-### Claude Code limits
-
-Claude Code has started recording its own limits, so its row can show when a
-five hour or weekly window is spent and when it comes back, rather than only a
-token tally. The tally remains until there is a limit to show.
+Everything was checked rather than assumed: every endpoint, the command line
+tool, the URL scheme, the sounds, the timer, notifications, and that no
+credential appears on the local endpoint. Twenty eight checks, all passing. The
+three that failed at first were the test reading a snapshot that is now
+deliberately three seconds stale while the panel is closed, not the application.
 
 ### Install
 
-Download MacInotch.zip, unzip it, move MacInotch.app to Applications. The
-build is ad-hoc signed, so open it with a right click the first time, or run
+Open MacInotch.dmg, drag MacInotch into Applications, then open it from there
+with a right click the first time. Or run
 `xattr -dr com.apple.quarantine /Applications/MacInotch.app`.
