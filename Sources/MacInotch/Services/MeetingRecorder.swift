@@ -1,7 +1,9 @@
 import AVFoundation
 import Foundation
 import ScreenCaptureKit
+#if compiler(>=6.2)
 import Speech
+#endif
 
 @MainActor
 final class MeetingRecorder: NSObject, ObservableObject {
@@ -34,7 +36,9 @@ final class MeetingRecorder: NSObject, ObservableObject {
     }
 
     static var available: Bool {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) { return true }
+        #endif
         return false
     }
 
@@ -50,6 +54,7 @@ final class MeetingRecorder: NSObject, ObservableObject {
         lastNote = nil
         status = "Listening"
 
+        #if compiler(>=6.2)
         guard #available(macOS 26.0, *) else { return }
 
         let speech = SpeechTranscriber(locale: Locale(identifier:
@@ -106,6 +111,10 @@ final class MeetingRecorder: NSObject, ObservableObject {
         recording = true
         startedAt = Date()
         status = "Recording"
+        #else
+        lastError = "Meeting notes need macOS 26 or later."
+        status = ""
+        #endif
     }
 
     private func startMicrophone() {
@@ -192,9 +201,11 @@ final class MeetingRecorder: NSObject, ObservableObject {
         continuation?.finish()
         continuation = nil
 
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *), let analyzer = analyzer as? SpeechAnalyzer {
             try? await analyzer.finalizeAndFinishThroughEndOfInput()
         }
+        #endif
         collector?.cancel()
         collector = nil
 
