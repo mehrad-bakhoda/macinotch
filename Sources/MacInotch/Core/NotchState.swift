@@ -104,7 +104,8 @@ final class NotchState: ObservableObject {
     @Published var panelTab: PanelTab = .home
     @Published var dockSection: DockSection = .files
     @Published var sessions: [CodeSession] = []
-    @Published var projectTime: [ProjectSpan] = []
+    @Published var projectTime = WorkBreakdown()
+    @Published var workRange: WorkRange = .day
     @Published var workHistory = WorkHistory()
 
     @Published var notchSize: CGSize = CGSize(width: 200, height: 32)

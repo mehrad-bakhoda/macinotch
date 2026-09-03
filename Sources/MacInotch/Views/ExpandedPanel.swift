@@ -435,7 +435,8 @@ struct ExpandedPanel: View {
             case .sessions: return p.showSessions
             case .accounts: return p.showAccounts
             case .github:   return p.showGitHub
-                || !state.projectTime.isEmpty || !state.workHistory.days.isEmpty
+                || !state.projectTime.month.isEmpty
+                || !state.workHistory.days.isEmpty
             case .mail:     return p.showMail
             case .notes:    return p.showNotes
             default:        return true
@@ -704,7 +705,7 @@ struct ExpandedPanel: View {
         let snap = github.snapshot
         return VStack(alignment: .leading, spacing: 11) {
             if !state.workHistory.days.isEmpty { streakSection }
-            if !state.projectTime.isEmpty { projectTimeSection }
+            if !state.projectTime.month.isEmpty { projectTimeSection }
 
             if !snap.connected {
                 Text("Connect GitHub from the quick actions row to see pushes, "
@@ -873,23 +874,54 @@ struct ExpandedPanel: View {
     }
 
     private var projectTimeSection: some View {
-        let spans = state.projectTime
-        let total = spans.reduce(0) { $0 + $1.seconds }
+        let range = state.workRange
+        let spans = state.projectTime.spans(range)
+        let total = state.projectTime.total(range)
         let widest = max(1, spans.first?.seconds ?? 1)
 
         return VStack(alignment: .leading, spacing: 7) {
-            HStack {
+            HStack(spacing: 8) {
                 sectionLabel("TIME PER PROJECT", action: nil)
-                Spacer()
-                Text(total > state.workHistory.todaySeconds * 1.1
-                     ? "\(ProjectSpan(name: "", seconds: total, messages: 0, providers: []).text) attributed"
-                     : ProjectSpan(name: "", seconds: total, messages: 0,
-                                   providers: []).text)
+                Spacer(minLength: 6)
+
+                HStack(spacing: 3) {
+                    ForEach(WorkRange.allCases) { option in
+                        Button {
+                            SoundKit.tap()
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                state.workRange = option
+                            }
+                        } label: {
+                            Text(option.label)
+                                .font(.system(size: 9.5, weight: .semibold))
+                                .foregroundStyle(range == option
+                                                 ? (t.isDark ? Color.black : Color.white)
+                                                 : t.tertiary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2.5)
+                                .background(Capsule().fill(range == option
+                                                           ? t.accent : t.control))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Text(WorkHistory.span(total))
                     .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(t.tertiary)
+                    .foregroundStyle(t.secondary)
+                    .monospacedDigit()
+                    .frame(width: 62, alignment: .trailing)
             }
 
-            ForEach(Array(spans.prefix(6))) { span in
+            if spans.isEmpty {
+                Text("Nothing recorded in that period")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(t.tertiary)
+                    .padding(.vertical, 6)
+            }
+
+            ForEach(Array(spans.prefix(range == .day ? 6 : 8))) { span in
                 HStack(spacing: 8) {
                     Text(span.name)
                         .font(.system(size: 11.5))
@@ -919,12 +951,17 @@ struct ExpandedPanel: View {
                 }
             }
 
-            Text("From your own session transcripts, counting gaps under ten "
-                 + "minutes as work. Projects worked in parallel are each credited "
-                 + "in full, so these can add up to more than the "
-                 + "\(WorkHistory.span(state.workHistory.todaySeconds)) above.")
+            Text(range == .day
+                 ? "From your own session transcripts, counting gaps under ten "
+                    + "minutes as work. Projects worked in parallel are each credited "
+                    + "in full, so these can add up to more than the "
+                    + "\(WorkHistory.span(state.workHistory.todaySeconds)) above."
+                 : "From your own session transcripts, counting gaps under ten "
+                    + "minutes as work. Projects worked in parallel are each "
+                    + "credited in full.")
                 .font(.system(size: 9))
                 .foregroundStyle(t.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Divider().opacity(0.4)
         }

@@ -1,14 +1,12 @@
-The disk image reads properly now.
+Work can be read by the day, the week or the month.
 
-Finder draws the icon names in a disk image window itself, in a dark colour,
-and no setting in the image can change that. On the previous dark background
-they were nearly invisible. The background is light now, which is what almost
-every Mac application ships for exactly this reason, and the names read as they
-are supposed to.
+The per project figures were only ever today's, which answers what you are
+doing and not what you have been doing. Today, Week and Month now sit above the
+list and switch between three ranges, each measured the same way from your own
+session transcripts.
 
-The notch silhouette stays at the top so the window is recognisably this
-application, and the instruction underneath now mentions the right click needed
-on first open.
+All three are worked out in a single pass over the transcripts rather than one
+pass each, so having three ranges available costs no more than having one did.
 
 ### Install
 

@@ -14,6 +14,49 @@ struct ProjectSpan: Identifiable, Equatable {
     }
 }
 
+enum WorkRange: String, CaseIterable, Identifiable {
+    case day, week, month
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .day: return "Today"
+        case .week: return "Week"
+        case .month: return "Month"
+        }
+    }
+
+    var since: Date {
+        let calendar = Calendar.current
+        switch self {
+        case .day: return calendar.startOfDay(for: Date())
+        case .week: return calendar.startOfDay(for: Date())
+            .addingTimeInterval(-6 * 86400)
+        case .month: return calendar.startOfDay(for: Date())
+            .addingTimeInterval(-29 * 86400)
+        }
+    }
+}
+
+struct WorkBreakdown: Equatable {
+    var day: [ProjectSpan] = []
+    var week: [ProjectSpan] = []
+    var month: [ProjectSpan] = []
+
+    func spans(_ range: WorkRange) -> [ProjectSpan] {
+        switch range {
+        case .day: return day
+        case .week: return week
+        case .month: return month
+        }
+    }
+
+    func total(_ range: WorkRange) -> Double {
+        spans(range).reduce(0) { $0 + $1.seconds }
+    }
+}
+
 struct WorkDay: Equatable {
     var date: Date
     var seconds: Double
@@ -57,10 +100,10 @@ final class ProjectTime: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "io.macinotch.projecttime")
     private var timer: DispatchSourceTimer?
-    private let onUpdate: @Sendable ([ProjectSpan]) -> Void
+    private let onUpdate: @Sendable (WorkBreakdown) -> Void
     private let onHistory: @Sendable (WorkHistory) -> Void
 
-    init(onUpdate: @escaping @Sendable ([ProjectSpan]) -> Void,
+    init(onUpdate: @escaping @Sendable (WorkBreakdown) -> Void,
          onHistory: @escaping @Sendable (WorkHistory) -> Void = { _ in }) {
         self.onUpdate = onUpdate
         self.onHistory = onHistory
@@ -71,7 +114,7 @@ final class ProjectTime: @unchecked Sendable {
         t.schedule(deadline: .now() + 6, repeating: interval)
         t.setEventHandler { [weak self] in
             guard let self else { return }
-            self.onUpdate(Self.today())
+            self.onUpdate(Self.breakdown())
             self.onHistory(Self.history())
         }
         t.resume()
@@ -81,6 +124,41 @@ final class ProjectTime: @unchecked Sendable {
     func stop() { timer?.cancel(); timer = nil }
 
     private static let idleGap: Double = 600
+
+    static func breakdown() -> WorkBreakdown {
+        let widest = WorkRange.month.since
+        var stamps: [String: (dates: [Date], providers: Set<String>)] = [:]
+        collect(root: NSHomeDirectory() + "/.claude/projects",
+                provider: "claude", since: widest, into: &stamps)
+        collect(root: NSHomeDirectory() + "/.codex/sessions",
+                provider: "codex", since: widest, into: &stamps)
+
+        var out = WorkBreakdown()
+        out.day = spans(from: stamps, since: WorkRange.day.since)
+        out.week = spans(from: stamps, since: WorkRange.week.since)
+        out.month = spans(from: stamps, since: widest)
+        return out
+    }
+
+    private static func spans(
+        from stamps: [String: (dates: [Date], providers: Set<String>)],
+        since: Date) -> [ProjectSpan] {
+
+        stamps.compactMap { name, entry -> ProjectSpan? in
+            let sorted = entry.dates.filter { $0 >= since }.sorted()
+            guard sorted.count > 1 else { return nil }
+
+            var total: Double = 0
+            for index in 1..<sorted.count {
+                let gap = sorted[index].timeIntervalSince(sorted[index - 1])
+                if gap > 0 && gap <= idleGap { total += gap }
+            }
+            guard total >= 60 else { return nil }
+            return ProjectSpan(name: name, seconds: total,
+                               messages: sorted.count, providers: entry.providers)
+        }
+        .sorted { $0.seconds > $1.seconds }
+    }
 
     static func today() -> [ProjectSpan] {
         let since = Calendar.current.startOfDay(for: Date())

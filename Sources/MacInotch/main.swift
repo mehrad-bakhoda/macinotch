@@ -204,10 +204,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         GitHubService.shared.start()
         MailService.shared.start()
         Dictation.shared.installHotKey()
-        projectTime = ProjectTime(onUpdate: { spans in
+        projectTime = ProjectTime(onUpdate: { breakdown in
             Task { @MainActor in
-                if spans != NotchState.shared.projectTime {
-                    NotchState.shared.projectTime = spans
+                if breakdown != NotchState.shared.projectTime {
+                    NotchState.shared.projectTime = breakdown
                 }
             }
         }, onHistory: { history in
@@ -382,6 +382,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     ? "granted" : "not granted",
             ],
             "panelWindow": NotchWindowController.currentWindowNumber,
+            "work": ["range": s.workRange.rawValue,
+                     "day": s.projectTime.day.map { ["name": $0.name, "text": $0.text] },
+                     "week": s.projectTime.week.map { ["name": $0.name, "text": $0.text] },
+                     "month": s.projectTime.month.map { ["name": $0.name, "text": $0.text] },
+                     "dayTotal": WorkHistory.span(s.projectTime.total(.day)),
+                     "weekTotal": WorkHistory.span(s.projectTime.total(.week)),
+                     "monthTotal": WorkHistory.span(s.projectTime.total(.month))],
             "capabilities": ["fans": Capabilities.shared.fans,
                              "temperature": Capabilities.shared.temperature,
                              "power": Capabilities.shared.power,

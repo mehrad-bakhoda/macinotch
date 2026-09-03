@@ -67,8 +67,9 @@ connects your calendar and GitHub, so neither needs a trip to Settings.
   what wants a reply, what is only information and what is marketing, each with
   a one sentence summary written on device, and a reply box that can draft the
   answer for you to edit.
-- **Work**, how long you spent in each project today, measured from your own
-  session transcripts, alongside today's pushes, pull requests and reviews waiting on you, a
+- **Work**, how long you spent in each project today, this week or this month,
+  measured from your own session transcripts, with a streak and a year of days,
+  alongside today's pushes, pull requests and reviews waiting on you, a
   contribution graph and any failing workflows.
 - **Sessions**, Claude Code and Codex sessions with their real names, message
   counts, token spend and a live indicator driven by whether the process is
